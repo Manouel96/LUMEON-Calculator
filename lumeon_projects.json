@@ -1,0 +1,921 @@
+{
+  "Grand Tobacco": [
+    {
+      "Quantity": 3,
+      "Width (m)": 0.906,
+      "Length (m)": 2.735
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 1.2,
+      "Length (m)": 2.735
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 0.9,
+      "Length (m)": 2.095
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 0.9,
+      "Length (m)": 0.643
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 0.548,
+      "Length (m)": 2.735
+    },
+    {
+      "Quantity": 4,
+      "Width (m)": 1.181,
+      "Length (m)": 2.735
+    }
+  ],
+  "Grand Master": [
+    {
+      "Quantity": 4,
+      "Width (m)": 1.46,
+      "Length (m)": 2.776
+    }
+  ],
+  "Manvel Danielyan": [
+    {
+      "Quantity": 2,
+      "Width (m)": 0.645,
+      "Length (m)": 1.325
+    },
+    {
+      "Quantity": 4,
+      "Width (m)": 0.549,
+      "Length (m)": 0.718
+    },
+    {
+      "Quantity": 4,
+      "Width (m)": 0.552,
+      "Length (m)": 0.72
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 0.427,
+      "Length (m)": 1.551
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 0.406,
+      "Length (m)": 1.446
+    }
+  ],
+  "Medical Center": [
+    {
+      "Quantity": 1,
+      "Width (m)": 1.117,
+      "Length (m)": 2.338
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 1.33,
+      "Length (m)": 2.338
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 1.717,
+      "Length (m)": 2.338
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 1.252,
+      "Length (m)": 2.338
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 1.366,
+      "Length (m)": 2.338
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 1.252,
+      "Length (m)": 2.338
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 1.577,
+      "Length (m)": 2.338
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 1.118,
+      "Length (m)": 2.338
+    },
+    {
+      "Quantity": 2,
+      "Width (m)": 1.8,
+      "Length (m)": 2.338
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 1.404,
+      "Length (m)": 2.338
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 0.934,
+      "Length (m)": 2.338
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 0.933,
+      "Length (m)": 2.338
+    }
+  ],
+  "acba bank": {
+    "panels": [
+      {
+        "Quantity": 12,
+        "Width (mm)": 530.0,
+        "Length (mm)": 2200.0
+      },
+      {
+        "Quantity": 2,
+        "Width (mm)": 1000.0,
+        "Length (mm)": 2000.0
+      },
+      {
+        "Quantity": 2,
+        "Width (mm)": 750.0,
+        "Length (mm)": 2600.0
+      },
+      {
+        "Quantity": 2,
+        "Width (mm)": 1200.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 9,
+        "Width (mm)": 800.0,
+        "Length (mm)": 2250.0
+      },
+      {
+        "Quantity": 9,
+        "Width (mm)": 725.0,
+        "Length (mm)": 825.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 186.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 6,
+        "Width (mm)": 877.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 877.0,
+        "Length (mm)": 2330.0
+      },
+      {
+        "Quantity": 2,
+        "Width (mm)": 1558.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 299.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 1536.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 1521.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 1531.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 1511.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 300.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 2000.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 2011.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 334.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 1261.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 300.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 2,
+        "Width (mm)": 1732.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 250.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 1308.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 871.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 829.0,
+        "Length (mm)": 2906.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 900.0,
+        "Length (mm)": 2250.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 925.0,
+        "Length (mm)": 725.0
+      },
+      {
+        "Quantity": 2,
+        "Width (mm)": 1618.0,
+        "Length (mm)": 2336.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 1111.0,
+        "Length (mm)": 2336.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 503.0,
+        "Length (mm)": 2200.0
+      }
+    ],
+    "manual_packages": [
+      {
+        "Quantity": 2,
+        "Length (cm)": 110.0,
+        "Width (cm)": 36.0,
+        "Height (cm)": 36.0,
+        "Gross weight (kg)": 27.0
+      },
+      {
+        "Quantity": 1,
+        "Length (cm)": 151.0,
+        "Width (cm)": 36.0,
+        "Height (cm)": 36.0,
+        "Gross weight (kg)": 38.0
+      },
+      {
+        "Quantity": 2,
+        "Length (cm)": 211.0,
+        "Width (cm)": 36.0,
+        "Height (cm)": 36.0,
+        "Gross weight (kg)": 47.0
+      }
+    ],
+    "quotes": [
+      {
+        "timestamp": "2026-10-20 04:38:27",
+        "filename": "LUMEON_Quote#2610200438_Martin_NoCompany_92%.pdf",
+        "status": "Latest Shared",
+        "transparency": "92%"
+      }
+    ],
+    "power_supplies": [
+      {
+        "Type": "100W",
+        "Quantity": 8.0
+      },
+      {
+        "Type": "50W",
+        "Quantity": 7.0
+      },
+      {
+        "Type": "200W",
+        "Quantity": 2.0
+      },
+      {
+        "Type": "300W",
+        "Quantity": 1.0
+      }
+    ],
+    "remote_qty": 0,
+    "silicone_qty": 15,
+    "clearance_w": 5.0,
+    "clearance_h": 8.0,
+    "waste_manual_packages": [
+      {
+        "Quantity": 1,
+        "Length (cm)": 180.0,
+        "Width (cm)": 36.0,
+        "Height (cm)": 36.0,
+        "Gross weight (kg)": 38.0
+      },
+      {
+        "Quantity": 0,
+        "Length (cm)": 0.0,
+        "Width (cm)": 0.0,
+        "Height (cm)": 0.0,
+        "Gross weight (kg)": 0.0
+      }
+    ],
+    "client_info": {
+      "client_type": "Company",
+      "warranty_yes_no": "Yes",
+      "measurement": "Provided",
+      "client_name": "",
+      "client_company": "",
+      "client_address": "",
+      "client_phone": "",
+      "warranty_text": "",
+      "transformer_text": "",
+      "remote_text": ""
+    },
+    "config": {
+      "film_price_88": 31.0,
+      "film_price_92": 38.0,
+      "film_price_96": 70.0,
+      "film": "92%",
+      "film_cost": 35.0,
+      "film_cost_cur": "USD",
+      "manual_sell": 59500.0,
+      "manual_sell_cur": "AMD",
+      "enforce_500mm": false,
+      "target_margin": 20.0,
+      "waste": 10.0,
+      "waste_pkg_mode": "Enter manually",
+      "method": "Manual packages",
+      "use_volumetric_88_92": true,
+      "ship_kg": 3500.0,
+      "ship_kg_cur": "AMD",
+      "fixed_ship": 0.0,
+      "fixed_ship_cur": "AMD",
+      "clearance": 100000.0,
+      "clearance_cur": "AMD",
+      "import_tax": 32.0,
+      "alibaba_fee_pct": 3.0,
+      "input_tax_pct": 0.0,
+      "output_vat": 0.0,
+      "labor_mode": "Per sqm",
+      "labor_rate_sqm": 11000.0,
+      "labor_cur": "AMD",
+      "labor_rate_hour": 11000.0,
+      "labor_hour_cur": "AMD",
+      "other": 300000.0,
+      "other_cur": "AMD",
+      "enable_turnover_tax": true,
+      "include_labor_in_turnover_tax": false,
+      "turnover_tax_base": 10.0,
+      "turnover_tax_deduct": 6.0,
+      "turnover_tax_floor": 4.5,
+      "doc_expense_pct": 100.0,
+      "profit_tax": 0.0,
+      "dividend_tax": 0.0,
+      "rate": 362.5,
+      "manual_rate": 362.5,
+      "exchange_mode": "Manual",
+      "rate_date": "2026-11-10",
+      "rate_source": "Manual",
+      "remote_cost": 10.0,
+      "remote_cur": "USD",
+      "silicone_cost": 10.0,
+      "silicone_cur": "USD",
+      "ps_cost_30W": 22.0,
+      "ps_cur_30W": "USD",
+      "ps_cost_50W": 24.0,
+      "ps_cur_50W": "USD",
+      "ps_cost_100W": 32.0,
+      "ps_cur_100W": "USD",
+      "ps_cost_200W": 37.0,
+      "ps_cur_200W": "USD",
+      "ps_cost_300W": 45.0,
+      "ps_cur_300W": "USD",
+      "ps_cost_500W": 60.0,
+      "ps_cur_500W": "USD"
+    },
+    "auto": false
+  },
+  "AmeriaBank": {
+    "quotes": [],
+    "panels": [
+      {
+        "Quantity": 1,
+        "Width (mm)": 700.0,
+        "Length (mm)": 2600.0
+      }
+    ],
+    "manual_packages": [
+      {
+        "Quantity": 1,
+        "Length (cm)": 27.0,
+        "Width (cm)": 28.0,
+        "Height (cm)": 122.0,
+        "Gross weight (kg)": 12.5
+      }
+    ],
+    "waste_manual_packages": [
+      {
+        "Quantity": 1,
+        "Length (cm)": 15.0,
+        "Width (cm)": 15.0,
+        "Height (cm)": 110.0,
+        "Gross weight (kg)": 2.0
+      }
+    ],
+    "power_supplies": [
+      {
+        "Type": "30W",
+        "Quantity": 0
+      }
+    ],
+    "remote_qty": 0,
+    "silicone_qty": 0,
+    "clearance_w": 3.0,
+    "clearance_h": 3.0,
+    "client_info": {
+      "client_type": "Company",
+      "warranty_yes_no": "Yes",
+      "measurement": "Provided",
+      "client_name": "",
+      "client_company": "",
+      "client_address": "",
+      "client_phone": "",
+      "warranty_text": "",
+      "transformer_text": "",
+      "remote_text": ""
+    }
+  },
+  "Edgar": [
+    {
+      "Quantity": 3,
+      "Width (m)": 0.8,
+      "Length (m)": 2.5
+    },
+    {
+      "Quantity": 1,
+      "Width (m)": 2.0,
+      "Length (m)": 2.0
+    }
+  ],
+  "Dummy": [
+    {
+      "Quantity": 13,
+      "Width (m)": 0.67,
+      "Length (m)": 2.6
+    }
+  ],
+  "Marita Bardakjian": [
+    {
+      "Quantity": 2,
+      "Width (m)": 1.6,
+      "Length (m)": 2.4
+    },
+    {
+      "Quantity": 2,
+      "Width (m)": 1.6,
+      "Length (m)": 2.6
+    },
+    {
+      "Quantity": 2,
+      "Width (m)": 1.6,
+      "Length (m)": 2.56
+    },
+    {
+      "Quantity": 2,
+      "Width (m)": 1.1,
+      "Length (m)": 2.56
+    },
+    {
+      "Quantity": 2,
+      "Width (m)": 1.2,
+      "Length (m)": 2.56
+    }
+  ],
+  "Lusine Tovmasyan": {
+    "panels": [
+      {
+        "Quantity": 1,
+        "Width (mm)": 1695.0,
+        "Length (mm)": 2635.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 1150.0,
+        "Length (mm)": 2635.0
+      },
+      {
+        "Quantity": 2,
+        "Width (mm)": 1385.0,
+        "Length (mm)": 2535.0
+      },
+      {
+        "Quantity": 2,
+        "Width (mm)": 1395.0,
+        "Length (mm)": 2535.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 1145.0,
+        "Length (mm)": 2635.0
+      }
+    ],
+    "manual_packages": [
+      {
+        "Quantity": 1,
+        "Length (cm)": 180.0,
+        "Width (cm)": 36.0,
+        "Height (cm)": 36.0,
+        "Gross weight (kg)": 20.0
+      }
+    ],
+    "quotes": [
+      {
+        "timestamp": "2026-10-20 22:35:20",
+        "filename": "LUMEON_Quote#2610202235_Lusine_Tovmasyan_NoCompany_92%.pdf",
+        "status": "Latest Shared",
+        "transparency": "92%"
+      },
+      {
+        "timestamp": "2026-10-20 22:51:47",
+        "filename": "LUMEON_Quote#2610202251_Lusine_Tovmasyan_NoCompany_88%.pdf",
+        "status": "Latest Shared",
+        "transparency": "88%"
+      },
+      {
+        "timestamp": "2026-10-20 22:55:31",
+        "filename": "LUMEON_Quote#2610202255_Lusine_Tovmasyan_NoCompany_96%.pdf",
+        "status": "Latest Shared",
+        "transparency": "96%"
+      }
+    ],
+    "power_supplies": [
+      {
+        "Type": "200W",
+        "Quantity": 1
+      },
+      {
+        "Type": "0",
+        "Quantity": 0
+      }
+    ],
+    "remote_qty": 1,
+    "silicone_qty": 2,
+    "clearance_w": 4.0,
+    "clearance_h": 4.0,
+    "waste_manual_packages": [
+      {
+        "Quantity": 1,
+        "Length (cm)": 1.0,
+        "Width (cm)": 1.0,
+        "Height (cm)": 1.0,
+        "Gross weight (kg)": 0.1
+      }
+    ]
+  },
+  "Martirosyan Dental Clinic": {
+    "panels": [
+      {
+        "Quantity": 2,
+        "Width (mm)": 983.0,
+        "Length (mm)": 2340.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 955.0,
+        "Length (mm)": 1985.0
+      },
+      {
+        "Quantity": 1,
+        "Width (mm)": 1650.0,
+        "Length (mm)": 2720.0
+      }
+    ],
+    "manual_packages": [
+      {
+        "Quantity": 1,
+        "Length (cm)": 27.0,
+        "Width (cm)": 28.0,
+        "Height (cm)": 122.0,
+        "Gross weight (kg)": 12.5
+      }
+    ],
+    "waste_manual_packages": [
+      {
+        "Quantity": 1,
+        "Length (cm)": 0.0,
+        "Width (cm)": 0.0,
+        "Height (cm)": 0.0,
+        "Gross weight (kg)": 0.0
+      }
+    ],
+    "quotes": [
+      {
+        "timestamp": "2026-11-07 01:33:31",
+        "filename": "LUMEON_Quote#2611070133_Dr._Martirosyan_Martirosyan_Dental_Clinic_92%.pdf",
+        "status": "Generated",
+        "transparency": "92%"
+      }
+    ],
+    "power_supplies": [
+      {
+        "Type": "100W",
+        "Quantity": 1
+      }
+    ],
+    "remote_qty": 1,
+    "silicone_qty": 1,
+    "clearance_w": 3.0,
+    "clearance_h": 3.0,
+    "client_info": {
+      "client_type": "Company",
+      "warranty_yes_no": "Yes",
+      "measurement": "Provided",
+      "client_name": "Dr. Martirosyan",
+      "client_company": "Martirosyan Dental Clinic",
+      "client_address": "Leonid Azgaldyan 12/6",
+      "client_phone": "+374 33 600550",
+      "warranty_text": "1",
+      "transformer_text": "1",
+      "remote_text": "1"
+    },
+    "config": {
+      "film_price_88": 31.0,
+      "film_price_92": 38.0,
+      "film_price_96": 70.0,
+      "film": "92%",
+      "film_cost": 35.0,
+      "film_cost_cur": "USD",
+      "manual_sell": 75000.0,
+      "manual_sell_cur": "AMD",
+      "enforce_500mm": true,
+      "target_margin": 25.0,
+      "waste": 0.0,
+      "waste_pkg_mode": "Auto-calculate",
+      "method": "Manual packages",
+      "use_volumetric_88_92": true,
+      "ship_kg": 3500.0,
+      "ship_kg_cur": "AMD",
+      "fixed_ship": 0.0,
+      "fixed_ship_cur": "AMD",
+      "clearance": 35000.0,
+      "clearance_cur": "AMD",
+      "import_tax": 32.0,
+      "alibaba_fee_pct": 3.0,
+      "input_tax_pct": 0.0,
+      "output_vat": 0.0,
+      "labor_mode": "Per sqm",
+      "labor_rate_sqm": 10000.0,
+      "labor_cur": "AMD",
+      "labor_rate_hour": 10000.0,
+      "labor_hour_cur": "AMD",
+      "other": 0.0,
+      "other_cur": "AMD",
+      "enable_turnover_tax": true,
+      "include_labor_in_turnover_tax": false,
+      "turnover_tax_base": 10.0,
+      "turnover_tax_deduct": 6.0,
+      "turnover_tax_floor": 4.5,
+      "doc_expense_pct": 100.0,
+      "profit_tax": 0.0,
+      "dividend_tax": 0.0,
+      "rate": 365.0,
+      "manual_rate": 365.0,
+      "exchange_mode": "Manual",
+      "rate_date": "2026-11-10",
+      "rate_source": "Manual",
+      "remote_cost": 10.0,
+      "remote_cur": "USD",
+      "silicone_cost": 8.0,
+      "silicone_cur": "USD",
+      "ps_cost_30W": 22.0,
+      "ps_cur_30W": "USD",
+      "ps_cost_50W": 24.0,
+      "ps_cur_50W": "USD",
+      "ps_cost_100W": 32.0,
+      "ps_cur_100W": "USD",
+      "ps_cost_200W": 37.0,
+      "ps_cur_200W": "USD",
+      "ps_cost_300W": 45.0,
+      "ps_cur_300W": "USD",
+      "ps_cost_500W": 60.0,
+      "ps_cur_500W": "USD"
+    },
+    "auto": false
+  },
+  "Mushegh": {
+    "panels": [
+      {
+        "Quantity": 4,
+        "Width (mm)": 793.0,
+        "Length (mm)": 1329.0
+      },
+      {
+        "Quantity": 6,
+        "Width (mm)": 806.0,
+        "Length (mm)": 1329.0
+      },
+      {
+        "Quantity": 8,
+        "Width (mm)": 839.0,
+        "Length (mm)": 1329.0
+      },
+      {
+        "Quantity": 2,
+        "Width (mm)": 725.0,
+        "Length (mm)": 1215.0
+      }
+    ],
+    "manual_packages": [
+      {
+        "Quantity": 1,
+        "Length (cm)": 36.0,
+        "Width (cm)": 36.0,
+        "Height (cm)": 100.0,
+        "Gross weight (kg)": 30.0
+      }
+    ],
+    "waste_manual_packages": [],
+    "quotes": [
+      {
+        "timestamp": "2026-10-25 00:06:53",
+        "filename": "LUMEON_Quote#2610250006_Mushegh_NoCompany_92%.pdf",
+        "status": "Latest Shared",
+        "transparency": "92%"
+      }
+    ],
+    "power_supplies": [
+      {
+        "Type": "300W",
+        "Quantity": 1
+      }
+    ],
+    "remote_qty": 1,
+    "silicone_qty": 0,
+    "clearance_w": 4.0,
+    "clearance_h": 4.0,
+    "client_info": {
+      "client_type": "Company",
+      "warranty_yes_no": "Yes",
+      "measurement": "Measured",
+      "client_name": "Mushegh",
+      "client_company": "",
+      "client_address": "Yerevan, Vahagni, Hatis 17",
+      "client_phone": "",
+      "warranty_text": "0.25",
+      "transformer_text": "1",
+      "remote_text": "2"
+    }
+  },
+  "Knarig": {
+    "panels": [
+      {
+        "Quantity": 3,
+        "Width (mm)": 1000.0,
+        "Length (mm)": 3300.0
+      }
+    ],
+    "manual_packages": [
+      {
+        "Quantity": 1,
+        "Length (cm)": 120.0,
+        "Width (cm)": 36.0,
+        "Height (cm)": 36.0,
+        "Gross weight (kg)": 12.5
+      }
+    ],
+    "waste_manual_packages": [
+      {
+        "Quantity": 1,
+        "Length (cm)": 0.0,
+        "Width (cm)": 0.0,
+        "Height (cm)": 0.0,
+        "Gross weight (kg)": 0.0
+      }
+    ],
+    "quotes": [],
+    "power_supplies": [
+      {
+        "Type": "100W",
+        "Quantity": 1
+      },
+      {
+        "Type": "0",
+        "Quantity": 0
+      }
+    ],
+    "remote_qty": 0,
+    "silicone_qty": 0,
+    "clearance_w": 2.0,
+    "clearance_h": 2.0,
+    "client_info": {
+      "client_type": "Company",
+      "warranty_yes_no": "Yes",
+      "measurement": "Provided",
+      "client_name": "",
+      "client_company": "",
+      "client_address": "",
+      "client_phone": "",
+      "warranty_text": "",
+      "transformer_text": "",
+      "remote_text": ""
+    },
+    "config": {
+      "film_price_88": 31.0,
+      "film_price_92": 38.0,
+      "film_price_96": 70.0,
+      "film": "92%",
+      "film_cost": 35.0,
+      "film_cost_cur": "USD",
+      "manual_sell": 75000.0,
+      "manual_sell_cur": "AMD",
+      "enforce_500mm": true,
+      "target_margin": 20.0,
+      "waste": 0.0,
+      "waste_pkg_mode": "Enter manually",
+      "method": "Manual packages",
+      "use_volumetric_88_92": true,
+      "ship_kg": 3500.0,
+      "ship_kg_cur": "AMD",
+      "fixed_ship": 0.0,
+      "fixed_ship_cur": "AMD",
+      "clearance": 35000.0,
+      "clearance_cur": "AMD",
+      "import_tax": 32.0,
+      "alibaba_fee_pct": 3.0,
+      "input_tax_pct": 0.0,
+      "output_vat": 0.0,
+      "labor_mode": "Per sqm",
+      "labor_rate_sqm": 10000.0,
+      "labor_cur": "AMD",
+      "labor_rate_hour": 10000.0,
+      "labor_hour_cur": "AMD",
+      "other": 30000.0,
+      "other_cur": "AMD",
+      "enable_turnover_tax": true,
+      "include_labor_in_turnover_tax": false,
+      "turnover_tax_base": 10.0,
+      "turnover_tax_deduct": 6.0,
+      "turnover_tax_floor": 4.5,
+      "doc_expense_pct": 100.0,
+      "profit_tax": 0.0,
+      "dividend_tax": 0.0,
+      "rate": 362.5,
+      "manual_rate": 362.5,
+      "exchange_mode": "Manual",
+      "rate_date": "2026-11-10",
+      "rate_source": "Manual",
+      "remote_cost": 10.0,
+      "remote_cur": "USD",
+      "silicone_cost": 10.0,
+      "silicone_cur": "USD",
+      "ps_cost_30W": 22.0,
+      "ps_cur_30W": "USD",
+      "ps_cost_50W": 24.0,
+      "ps_cur_50W": "USD",
+      "ps_cost_100W": 32.0,
+      "ps_cur_100W": "USD",
+      "ps_cost_200W": 37.0,
+      "ps_cur_200W": "USD",
+      "ps_cost_300W": 45.0,
+      "ps_cur_300W": "USD",
+      "ps_cost_500W": 60.0,
+      "ps_cur_500W": "USD"
+    },
+    "auto": false
+  }
+}
