@@ -1692,11 +1692,35 @@ if page == 'Calculator':
         st.success(st.session_state.get('quote_success_msg', 'Ready for download!'))
         file_path = st.session_state.generated_quote_path
 
-        with open(file_path, "rb") as file:
-            st.download_button(
-                label="Download Generated Quote",
-                data=file,
-                file_name=os.path.basename(file_path),
-                mime="application/pdf" if file_path.endswith(".pdf") else "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                type="primary"
-            )
+        # Identify both PDF and DOCX paths automatically
+        if file_path.endswith('.pdf'):
+            pdf_path = file_path
+            docx_path = file_path[:-4] + '.docx'
+        else:
+            docx_path = file_path
+            pdf_path = file_path[:-5] + '.pdf'
+
+        col1, col2 = st.columns(2)
+
+        # 1. Download PDF button (if generated)
+        if os.path.exists(pdf_path):
+            with open(pdf_path, "rb") as f_pdf:
+                col1.download_button(
+                    label="📕 Download PDF",
+                    data=f_pdf,
+                    file_name=os.path.basename(pdf_path),
+                    mime="application/pdf",
+                    type="primary",
+                    width="stretch"
+                )
+
+        # 2. Download Word (.docx) button
+        if os.path.exists(docx_path):
+            with open(docx_path, "rb") as f_docx:
+                col2.download_button(
+                    label="📄 Download Word (.docx)",
+                    data=f_docx,
+                    file_name=os.path.basename(docx_path),
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    width="stretch"
+                )
