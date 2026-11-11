@@ -31,34 +31,36 @@ def get_drive_service():
         print(f"Drive connection error: {e}")
         return None
 
-def upload_file_to_drive(local_path, folder_id=GDRIVE_QUOTES_FOLDER_ID):
-    """Uploads a local quote file to the Google Drive Generated Quotes folder."""
-    service = get_drive_service()
-    if not service:
-        st.warning("⚠️ Google Drive service not connected.")
+import base64
+import requests
+
+def upload_file_to_drive(local_path):
+    """Uploads quotes to Google Drive via secure Apps Script bridge without quota limits."""
+    if "gdrive_webhook_url" not in st.secrets:
+        st.warning("⚠️ Google Drive webhook URL not configured in Secrets.")
         return None
     try:
-        # Explicit MIME type for Linux environment
-        if local_path.endswith('.pdf'):
-            mime_type = 'application/pdf'
-        else:
-            mime_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-
-        file_metadata = {
-            "name": os.path.basename(local_path),
-            "parents": [folder_id]
+        with open(local_path, "rb") as f:
+            b64_content = base64.b64encode(f.read()).decode("utf-8")
+        
+        mime_type = "application/pdf" if local_path.endswith(".pdf") else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        
+        payload = {
+            "fileName": os.path.basename(local_path),
+            "base64": b64_content,
+            "mimeType": mime_type
         }
-        media = MediaFileUpload(local_path, mimetype=mime_type, resumable=True)
-        file = service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields="id, webViewLink",
-            supportsAllDrives=True
-        ).execute()
-        return file.get("webViewLink")
+        
+        response = requests.post(st.secrets["gdrive_webhook_url"], json=payload, timeout=60)
+        res_data = response.json()
+        
+        if res_data.get("status") == "success":
+            return res_data.get("url")
+        else:
+            st.error(f"⚠️ Drive script error: {res_data.get('message')}")
+            return None
     except Exception as e:
-        st.error(f"⚠️ Drive upload error: {e}")
-        print(f"Drive upload failed: {e}")
+        st.error(f"⚠️ Upload error: {e}")
         return None
 
 HISTORY = Path(__file__).with_name('lumeon_calculator_history.json')
