@@ -7,10 +7,46 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 import docx
+from io import BytesIO
 import google.auth
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
 from google.oauth2 import service_account
+
+# Google Drive IDs
+GDRIVE_PROJECTS_FILE_ID = "1PF_NU3GHoVdJpz0iAtLxTjNb9_G0y05D"
+GDRIVE_QUOTES_FOLDER_ID = "1gNfIX4RjSXuKB73r2j8o5VOHbeSRnRwS"
+
+def get_drive_service():
+    """Authenticates using Streamlit secrets."""
+    if "gcp_service_account" not in st.secrets:
+        return None
+    try:
+        creds = service_account.Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],
+            scopes=["https://www.googleapis.com/auth/drive"]
+        )
+        return build("drive", "v3", credentials=creds)
+    except Exception as e:
+        print(f"Drive connection error: {e}")
+        return None
+
+def upload_file_to_drive(local_path, folder_id=GDRIVE_QUOTES_FOLDER_ID):
+    """Uploads a local quote file to the Google Drive Generated Quotes folder."""
+    service = get_drive_service()
+    if not service:
+        return None
+    try:
+        file_metadata = {
+            "name": os.path.basename(local_path),
+            "parents": [folder_id]
+        }
+        media = MediaFileUpload(local_path, resumable=True)
+        file = service.files().create(body=file_metadata, media_body=media, fields="id, webViewLink").execute()
+        return file.get("webViewLink")
+    except Exception as e:
+        print(f"Drive upload failed: {e}")
+        return None
 
 def upload_file_to_drive(local_path, folder_id="1gNfIX4RjSXuKB73r2j8o5VOHbeSRnRwS"):
     """Uploads a local file to the LUMEON Google Drive Generated Quotes folder."""
@@ -179,13 +215,37 @@ def fetch_cba_usd_rate():
     return rate, date_text or datetime.now().strftime('%Y-%m-%d')
 
 def load_projects():
+    """Loads projects from Google Drive, falling back to local file."""
+    service = get_drive_service()
+    if service:
+        try:
+            request = service.files().get_media(fileId=GDRIVE_PROJECTS_FILE_ID)
+            content = request.execute().decode('utf-8')
+            data = json.loads(content)
+            if isinstance(data, dict):
+                PROJECTS_FILE.write_text(content, encoding='utf-8')
+                return data
+        except Exception as e:
+            print(f"Drive load failed, falling back to local: {e}")
+
     try:
         data = json.loads(PROJECTS_FILE.read_text(encoding='utf-8'))
         return data if isinstance(data, dict) else {}
-    except Exception: return {}
+    except Exception:
+        return {}
 
 def save_projects(projects):
-    PROJECTS_FILE.write_text(json.dumps(projects, ensure_ascii=False, indent=2), encoding='utf-8')
+    """Saves projects to local file AND syncs directly to Google Drive."""
+    json_str = json.dumps(projects, ensure_ascii=False, indent=2)
+    PROJECTS_FILE.write_text(json_str, encoding='utf-8')
+
+    service = get_drive_service()
+    if service:
+        try:
+            media = MediaIoBaseUpload(BytesIO(json_str.encode('utf-8')), mimetype='application/json', resumable=True)
+            service.files().update(fileId=GDRIVE_PROJECTS_FILE_ID, media_body=media).execute()
+        except Exception as e:
+            print(f"Drive save failed: {e}")
 
 def hist():
     try: return json.loads(HISTORY.read_text('utf-8'))
@@ -1773,7 +1833,8 @@ if page == 'Calculator':
                     width="stretch"
                 )
 
-        # Google Drive Links (properly indented)
+        # Google Drive Direct Links
         if st.session_state.get('drive_links'):
+            st.markdown("---")
             for ftype, url in st.session_state.drive_links:
                 st.markdown(f"☁️ [Open {ftype} in Google Drive]({url})")
