@@ -584,7 +584,24 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
     valid_date = (base_date + timedelta(days=14)).strftime("%d/%m/%Y")
     quote_num = datetime.now().strftime("%y%m%d%H%M")
     doc = docx.Document(template_path)
-    fill_bookmark(doc, "bmCustomerName", client_name); fill_bookmark(doc, "bmCompany", client_company); fill_bookmark(doc, "bmAddress", client_address); fill_bookmark(doc, "bmPhone", client_phone); fill_bookmark(doc, "bmWarranty", warranty_text); fill_bookmark(doc, "bmTransformer", transformer_text); fill_bookmark(doc, "bmRemote", remote_text); fill_bookmark(doc, "bmDate", issue_date); fill_bookmark(doc, "bmValidDate", valid_date); fill_bookmark(doc, "bmQuoteNum", quote_num); fill_bookmark(doc, "bmGrandTotal", f"{total_amd:,.0f}")
+
+    # Clean up ghost inline header watermarks that break LibreOffice PDF rendering
+    for s in doc.sections:
+        for p in list(s.header.paragraphs):
+            if not p.text.strip() and 'wp:inline' in p._p.xml:
+                p._p.getparent().remove(p._p)
+
+    fill_bookmark(doc, "bmCustomerName", client_name)
+    fill_bookmark(doc, "bmCompany", client_company)
+    fill_bookmark(doc, "bmAddress", client_address)
+    fill_bookmark(doc, "bmPhone", client_phone)
+    fill_bookmark(doc, "bmWarranty", warranty_text)
+    fill_bookmark(doc, "bmTransformer", transformer_text)
+    fill_bookmark(doc, "bmRemote", remote_text)
+    fill_bookmark(doc, "bmDate", issue_date)
+    fill_bookmark(doc, "bmValidDate", valid_date)
+    fill_bookmark(doc, "bmQuoteNum", quote_num)
+    fill_bookmark(doc, "bmGrandTotal", f"{total_amd:,.0f}")
     if len(doc.tables) >= 2:
         tbl = doc.tables[1]
         active_panels = panels_df[(panels_df['Quantity'] > 0) & (panels_df['Width (mm)'] > 0) & (panels_df['Length (mm)'] > 0)]
@@ -616,7 +633,7 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
     doc.save(docx_path)
     pdf_success = False
 
-    # 1. Try Windows MS Word conversion (local PC)
+    # 1. Try Windows MS Word conversion (if running locally on PC)
     try:
         import pythoncom
         from docx2pdf import convert
@@ -625,7 +642,7 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
         pythoncom.CoUninitialize()
         pdf_success = True
     except Exception:
-        # 2. Try Linux LibreOffice conversion (Streamlit Cloud)
+        # 2. Try Linux LibreOffice conversion (running on Streamlit Cloud)
         try:
             cmd = ["libreoffice", "--headless", "--convert-to", "pdf", docx_path, "--outdir", output_dir]
             subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=40)
