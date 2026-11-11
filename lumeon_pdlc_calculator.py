@@ -649,10 +649,10 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
     fill_bookmark(doc, "bmQuoteNum", quote_num)
     fill_bookmark(doc, "bmGrandTotal", f"{total_amd:,.0f}")
     
-    # Enforce exact table column alignment: 3420, 1350, 1170, 1620, 1440 dxa (Sum = 9000 dxa / 450 pt)
     TARGET_WIDTHS_DXA = [3420, 1350, 1170, 1620, 1440]
     TARGET_WIDTHS_EMU = [docx.shared.Emu(int(w * 914400 / 1440)) for w in TARGET_WIDTHS_DXA]
     
+    # Format Table 1 (Main Panels Table)
     def align_table(tbl):
         from docx.oxml import OxmlElement
         from docx.oxml.ns import qn
@@ -701,6 +701,25 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
                 tcW.set(qn("w:w"), str(w_dxa))
                 tcW.set(qn("w:type"), "dxa")
 
+    # Remove all borders from Table 2 (Accessories Table)
+    def remove_table_borders(tbl):
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        
+        tblPr = tbl._tbl.tblPr
+        tblBorders = tblPr.find(qn("w:tblBorders"))
+        if tblBorders is None:
+            tblBorders = OxmlElement("w:tblBorders")
+            tblPr.append(tblBorders)
+            
+        # Sets top, bottom, left, right, and internal dividers to none
+        for border_name in ["top", "left", "bottom", "right", "insideH", "insideV"]:
+            b = tblBorders.find(qn(f"w:{border_name}"))
+            if b is None:
+                b = OxmlElement(f"w:{border_name}")
+                tblBorders.append(b)
+            b.set(qn("w:val"), "none")
+
     if len(doc.tables) >= 2:
         tbl = doc.tables[1]
         active_panels = panels_df[(panels_df['Quantity'] > 0) & (panels_df['Width (mm)'] > 0) & (panels_df['Length (mm)'] > 0)]
@@ -730,8 +749,11 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
             insert_idx += 1
             
         align_table(doc.tables[1])
+        
+        # Make the second box (accessories) borderless so it never looks misaligned
         if len(doc.tables) >= 3:
             align_table(doc.tables[2])
+            remove_table_borders(doc.tables[2])
             
     safe_company = client_company.replace(" ", "_") if client_company else "NoCompany"
     safe_name = client_name.replace(" ", "_") if client_name else "NoName"
@@ -740,7 +762,7 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
     pdf_path = os.path.join(output_dir, f"{file_prefix}.pdf")
     doc.save(docx_path)
     
-    # Recursive search for CloudConvert key in st.secrets (even inside nested dicts like gcp_service_account)
+    # Recursive search for CloudConvert key
     def find_cc_key(obj):
         if hasattr(obj, "items"):
             for k, v in obj.items():
@@ -767,7 +789,7 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
     pdf_success = False
     if compile_pdf:
         if not cc_api_key:
-            st.warning("CloudConvert API key not found. Please ensure it is placed at the very top of your Streamlit Secrets box.")
+            st.warning("CloudConvert API key not found. Please ensure it is placed at the top of your Streamlit Secrets box.")
         else:
             try:
                 import requests, time
@@ -793,7 +815,6 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
                     upload_task = next((t for t in job_data["tasks"] if t["name"] == "import-file"), None)
                     upload_task_id = upload_task["id"]
                     
-                    # Poll for upload form if not ready immediately
                     for _ in range(10):
                         if upload_task.get("result", {}).get("form"):
                             break
