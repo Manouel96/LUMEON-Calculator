@@ -506,6 +506,8 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
     pdf_path = os.path.join(output_dir, f"{file_prefix}.pdf")
     doc.save(docx_path)
     pdf_success = False
+
+    # 1. Try Windows MS Word conversion (if running locally on PC)
     try:
         import pythoncom
         from docx2pdf import convert
@@ -513,8 +515,17 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
         convert(docx_path, pdf_path)
         pythoncom.CoUninitialize()
         pdf_success = True
-    except Exception as e: print(f"PDF Conversion Failed: {e}")
-    return pdf_path if pdf_success else docx_path, "Success"
+    except Exception:
+        # 2. Try Linux LibreOffice conversion (running on Streamlit Cloud)
+        try:
+            cmd = ["libreoffice", "--headless", "--convert-to", "pdf", docx_path, "--outdir", output_dir]
+            subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=40)
+            if os.path.exists(pdf_path):
+                pdf_success = True
+        except Exception as e:
+            print(f"Linux PDF Conversion Failed: {e}")
+
+    return docx_path, (pdf_path if pdf_success else None), "Success"
 
 st.set_page_config(page_title='LUMEON Calculator', layout='wide')
 
