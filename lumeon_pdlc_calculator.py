@@ -585,17 +585,16 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
     quote_num = datetime.now().strftime("%y%m%d%H%M")
     doc = docx.Document(template_path)
 
-    # 1. Clean up ghost inline header watermarks that break LibreOffice PDF rendering
+    # 1. Clean up ghost inline header watermarks and set clean A4 margins
     for s in doc.sections:
         for p in list(s.header.paragraphs):
             if not p.text.strip() and 'wp:inline' in p._p.xml:
                 p._p.getparent().remove(p._p)
-        # Set standard A4 paper size and clean margins so Page 1 never overflows
         s.page_height = docx.shared.Cm(29.7)
         s.page_width = docx.shared.Cm(21.0)
-        s.top_margin = docx.shared.Cm(1.2)
-        s.bottom_margin = docx.shared.Cm(1.2)
-        s.header_distance = docx.shared.Cm(0.8)
+        s.top_margin = docx.shared.Cm(0.8)
+        s.bottom_margin = docx.shared.Cm(0.8)
+        s.header_distance = docx.shared.Cm(0.5)
 
     fill_bookmark(doc, "bmCustomerName", client_name)
     fill_bookmark(doc, "bmCompany", client_company)
@@ -633,14 +632,21 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
             cells[4].text = f"{line_total:,.0f}"
             insert_idx += 1
 
-    # 2. Tighten table paragraph spacing so tables and total amount stay compact on Page 1
+    # 2. Compact table font size (8.5pt) and line spacing to eliminate word-wrapping on Linux
     for t in doc.tables:
         for row in t.rows:
             for cell in row.cells:
                 for p in cell.paragraphs:
-                    p.paragraph_format.space_before = docx.shared.Pt(1)
-                    p.paragraph_format.space_after = docx.shared.Pt(1)
+                    p.paragraph_format.space_before = docx.shared.Pt(0)
+                    p.paragraph_format.space_after = docx.shared.Pt(0)
                     p.paragraph_format.line_spacing = 1.0
+                    for r in p.runs:
+                        r.font.size = docx.shared.Pt(8.5)
+
+    # 3. Strip unnecessary empty paragraphs between tables so Page 1 doesn't stretch
+    for p in list(doc.paragraphs):
+        if not p.text.strip() and 'pageBreakBefore' not in p._p.xml:
+            p._p.getparent().remove(p._p)
 
     safe_company = client_company.replace(" ", "_") if client_company else "NoCompany"
     safe_name = client_name.replace(" ", "_") if client_name else "NoName"
