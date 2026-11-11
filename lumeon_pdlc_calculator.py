@@ -1772,7 +1772,8 @@ if page == 'Calculator':
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     width="stretch"
                 )
-                
+
+        # Google Drive Links (properly indented)
         if st.session_state.get('drive_links'):
-        for ftype, url in st.session_state.drive_links:
-            st.markdown(f"☁️ [Open {ftype} in Google Drive]({url})")
+            for ftype, url in st.session_state.drive_links:
+                st.markdown(f"☁️ [Open {ftype} in Google Drive]({url})")
