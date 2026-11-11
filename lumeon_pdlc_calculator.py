@@ -603,7 +603,7 @@ def convert_with_cloudconvert(docx_path, pdf_path):
         print(f"CloudConvert conversion error: {e}")
         return False
 
-def generate_quote(client_type, warranty_yes_no, measurement, client_name, client_company, client_address, client_phone, warranty_text, transformer_text, remote_text, manual_date, unit_price, total_amd, panels_df, transparency, project_name="Manual_Entry", enforce_500mm=True):
+def generate_quote(client_type, warranty_yes_no, measurement, client_name, client_company, client_address, client_phone, warranty_text, transformer_text, remote_text, manual_date, unit_price, total_amd, panels_df, transparency, project_name="Manual_Entry", enforce_500mm=True, compile_pdf=True):
     base_path = os.path.dirname(os.path.abspath(__file__))
     templates_dir = os.path.join(base_path, "Quote Templates")
     safe_proj = "".join(c for c in project_name if c.isalnum() or c in (' ', '_', '-')).strip()
@@ -663,6 +663,16 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
             cells[4].text = f"{line_total:,.0f}"
             insert_idx += 1
 
+    # Lock Table 1 and Table 2 column widths identically so their borders align 100%
+    standard_widths = [docx.shared.Cm(6.0), docx.shared.Cm(2.4), docx.shared.Cm(1.8), docx.shared.Cm(2.84), docx.shared.Cm(2.84)]
+    if len(doc.tables) >= 3:
+        for t in [doc.tables[1], doc.tables[2]]:
+            t.autofit = False
+            for row in t.rows:
+                for idx, w in enumerate(standard_widths):
+                    if idx < len(row.cells):
+                        row.cells[idx].width = w
+
     safe_company = client_company.replace(" ", "_") if client_company else "NoCompany"
     safe_name = client_name.replace(" ", "_") if client_name else "NoName"
     file_prefix = f"LUMEON_Quote#{quote_num}_{safe_name}_{safe_company}_{transparency}"
@@ -671,28 +681,19 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
     doc.save(docx_path)
     pdf_success = False
 
-    # 1. Try local Windows MS Word (if running on desktop PC)
-    try:
-        import pythoncom
-        from docx2pdf import convert
-        pythoncom.CoInitialize()
-        convert(docx_path, pdf_path)
-        pythoncom.CoUninitialize()
-        pdf_success = True
-    except Exception:
-        # 2. Try CloudConvert with genuine Microsoft Office engine
-        if convert_with_cloudconvert(docx_path, pdf_path):
-            pdf_success = True
-
-    # 3. Fallback to LibreOffice if CloudConvert is unavailable
-    if not pdf_success:
+    if compile_pdf:
+        # 1. Try local Windows MS Word (if on desktop PC)
         try:
-            cmd = ["libreoffice", "--headless", "--convert-to", "pdf", docx_path, "--outdir", output_dir]
-            subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=40)
-            if os.path.exists(pdf_path):
+            import pythoncom
+            from docx2pdf import convert
+            pythoncom.CoInitialize()
+            convert(docx_path, pdf_path)
+            pythoncom.CoUninitialize()
+            pdf_success = True
+        except Exception:
+            # 2. Try CloudConvert
+            if convert_with_cloudconvert(docx_path, pdf_path):
                 pdf_success = True
-        except Exception as e:
-            print(f"LibreOffice conversion failed: {e}")
 
     return (pdf_path if pdf_success else docx_path), "Success"
 
@@ -1810,7 +1811,7 @@ if page == 'Calculator':
     out['USD equivalent'] = out.AMD / c['rate']
     st.dataframe(out.round(2), hide_index=True, width='stretch')
 
-    st.subheader("Generate Quote Document")
+st.subheader("Generate Quote Document")
     with st.form("quote_generation_form"):
         q_col1, q_col2, q_col3 = st.columns(3)
         client_type = q_col1.selectbox("Client Type", ["Company", "Personal"], key="q_client_type")
@@ -1828,7 +1829,10 @@ if page == 'Calculator':
         transformer_text = t_col2.text_input("Transformer Details (Bookmark)", key="q_transformer_text")
         remote_text = t_col3.text_input("Remote Details (Bookmark)", key="q_remote_text")
 
-        manual_date = st.date_input("Issue Date (Optional)", value=None, key="q_manual_date")
+        q_bot1, q_bot2 = st.columns([2, 1])
+        manual_date = q_bot1.date_input("Issue Date (Optional)", value=None, key="q_manual_date")
+        compile_pdf = q_bot2.checkbox("Compile Official PDF (Uses CloudConvert credits)", value=True, help="Uncheck when just testing dimensions or pricing to save your daily credits.")
+
         submitted = st.form_submit_button("Generate Quote", type="primary", width='stretch')
 
     if submitted:
@@ -1837,7 +1841,7 @@ if page == 'Calculator':
         else:
             with st.spinner("Generating document..."):
                 proj_name = st.session_state.get('selected_project', 'Manual entry')
-                
+
                 if proj_name != 'Manual entry':
                     if not isinstance(projects.get(proj_name), dict):
                         projects[proj_name] = {'quotes': []}
@@ -1848,7 +1852,7 @@ if page == 'Calculator':
                         'remote_text': remote_text
                     }
                     save_projects(projects)
-                
+
                 file_path, msg = generate_quote(
                     client_type=client_type,
                     warranty_yes_no=warranty_yes_no,
@@ -1866,7 +1870,8 @@ if page == 'Calculator':
                     panels_df=pd.DataFrame(st.session_state.get('current_panels_output', st.session_state.panels)),
                     transparency=c["film"],
                     project_name=proj_name,
-                    enforce_500mm=c.get('enforce_500mm', True)
+                    enforce_500mm=c.get('enforce_500mm', True),
+                    compile_pdf=compile_pdf
                 )
 
                 if file_path and os.path.exists(file_path):
@@ -1881,7 +1886,7 @@ if page == 'Calculator':
                         docx_path = file_path
                         pdf_path = file_path[:-5] + '.pdf'
 
-                    # Automatically upload both files into the project subfolder
+                    # Automatically upload both files to Google Drive (in project subfolder)
                     drive_links = []
                     if os.path.exists(docx_path):
                         link_docx = upload_file_to_drive(docx_path, project_name=proj_name)
