@@ -1811,7 +1811,7 @@ if page == 'Calculator':
     out['USD equivalent'] = out.AMD / c['rate']
     st.dataframe(out.round(2), hide_index=True, width='stretch')
 
-st.subheader("Generate Quote Document")
+    st.subheader("Generate Quote Document")
     with st.form("quote_generation_form"):
         q_col1, q_col2, q_col3 = st.columns(3)
         client_type = q_col1.selectbox("Client Type", ["Company", "Personal"], key="q_client_type")
