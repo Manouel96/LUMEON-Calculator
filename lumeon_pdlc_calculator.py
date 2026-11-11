@@ -507,7 +507,7 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
     doc.save(docx_path)
     pdf_success = False
 
-    # 1. Try Windows MS Word conversion (if running locally on PC)
+    # 1. Try Windows MS Word conversion (local PC)
     try:
         import pythoncom
         from docx2pdf import convert
@@ -516,7 +516,7 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
         pythoncom.CoUninitialize()
         pdf_success = True
     except Exception:
-        # 2. Try Linux LibreOffice conversion (running on Streamlit Cloud)
+        # 2. Try Linux LibreOffice conversion (Streamlit Cloud)
         try:
             cmd = ["libreoffice", "--headless", "--convert-to", "pdf", docx_path, "--outdir", output_dir]
             subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=40)
@@ -525,7 +525,7 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
         except Exception as e:
             print(f"Linux PDF Conversion Failed: {e}")
 
-    return docx_path, (pdf_path if pdf_success else None), "Success"
+    return (pdf_path if pdf_success else docx_path), "Success"
 
 st.set_page_config(page_title='LUMEON Calculator', layout='wide')
 
