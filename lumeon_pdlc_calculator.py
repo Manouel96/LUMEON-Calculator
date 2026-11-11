@@ -36,24 +36,27 @@ import requests
 
 def upload_file_to_drive(local_path):
     """Uploads quotes to Google Drive via secure Apps Script bridge without quota limits."""
-    if "gdrive_webhook_url" not in st.secrets:
+    # Checks both top-level and inside [gcp_service_account]
+    webhook_url = st.secrets.get("gdrive_webhook_url") or st.secrets.get("gcp_service_account", {}).get("gdrive_webhook_url")
+
+    if not webhook_url:
         st.warning("⚠️ Google Drive webhook URL not configured in Secrets.")
         return None
     try:
         with open(local_path, "rb") as f:
             b64_content = base64.b64encode(f.read()).decode("utf-8")
-        
+
         mime_type = "application/pdf" if local_path.endswith(".pdf") else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        
+
         payload = {
             "fileName": os.path.basename(local_path),
             "base64": b64_content,
             "mimeType": mime_type
         }
-        
-        response = requests.post(st.secrets["gdrive_webhook_url"], json=payload, timeout=60)
+
+        response = requests.post(webhook_url, json=payload, timeout=60)
         res_data = response.json()
-        
+
         if res_data.get("status") == "success":
             return res_data.get("url")
         else:
