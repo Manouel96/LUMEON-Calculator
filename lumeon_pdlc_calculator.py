@@ -1695,6 +1695,29 @@ if page == 'Calculator':
                     st.session_state.generated_quote_path = file_path
                     st.session_state.quote_success_msg = "Quote Generated Successfully!"
 
+                    # Identify both DOCX and PDF paths
+                    if file_path.endswith('.pdf'):
+                        pdf_path = file_path
+                        docx_path = file_path[:-4] + '.docx'
+                    else:
+                        docx_path = file_path
+                        pdf_path = file_path[:-5] + '.pdf'
+
+                    # Automatically upload both files to Google Drive
+                    drive_links = []
+                    if os.path.exists(docx_path):
+                        link_docx = upload_file_to_drive(docx_path)
+                        if link_docx:
+                            drive_links.append(("Word", link_docx))
+
+                    if os.path.exists(pdf_path):
+                        link_pdf = upload_file_to_drive(pdf_path)
+                        if link_pdf:
+                            drive_links.append(("PDF", link_pdf))
+
+                    st.session_state.drive_links = drive_links
+
+                    # Update project quote history
                     if proj_name != 'Manual entry':
                         synced_projects = load_projects()
                         if not isinstance(synced_projects.get(proj_name), dict):
@@ -1749,3 +1772,7 @@ if page == 'Calculator':
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     width="stretch"
                 )
+                
+        if st.session_state.get('drive_links'):
+        for ftype, url in st.session_state.drive_links:
+            st.markdown(f"☁️ [Open {ftype} in Google Drive]({url})")
