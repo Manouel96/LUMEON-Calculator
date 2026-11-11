@@ -740,26 +740,49 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
     pdf_path = os.path.join(output_dir, f"{file_prefix}.pdf")
     doc.save(docx_path)
     
-    # Retrieve CloudConvert API Key robustly
+    # Comprehensive CloudConvert API Key Finder
     cc_api_key = ""
-    for k in ["CLOUDCONVERT_API_KEY", "cloudconvert_api_key", "CLOUDCONVERT_KEY", "cloudconvert_key", "CLOUDCONVERT_TOKEN", "cloudconvert_token", "CLOUDCONVERT", "cloudconvert"]:
-        if k in st.secrets:
-            val = st.secrets[k]
-            if isinstance(val, str) and val.strip():
-                cc_api_key = val.strip()
-                break
-            elif isinstance(val, dict):
-                for sub_k in ["api_key", "apiKey", "token", "key"]:
-                    if sub_k in val and val[sub_k]:
-                        cc_api_key = str(val[sub_k]).strip()
+    detected_keys = []
+    try:
+        # Check environment variables first
+        cc_api_key = os.environ.get("CLOUDCONVERT_API_KEY", "")
+        
+        # Check st.secrets
+        if not cc_api_key and hasattr(st, "secrets"):
+            detected_keys = list(st.secrets.keys())
+            
+            # 1. Match by key name
+            for k in detected_keys:
+                if any(x in k.lower() for x in ["cloudconvert", "cloud_convert", "convert_api", "cc_key"]):
+                    val = st.secrets[k]
+                    if isinstance(val, str) and val.strip():
+                        cc_api_key = val.strip()
                         break
-                if cc_api_key:
-                    break
+                    elif isinstance(val, dict):
+                        for sub_k, sub_v in val.items():
+                            if isinstance(sub_v, str) and sub_v.strip():
+                                cc_api_key = sub_v.strip()
+                                break
+                                
+            # 2. Token pattern detection (CloudConvert tokens are JWTs starting with eyJ)
+            if not cc_api_key:
+                for k in detected_keys:
+                    val = st.secrets[k]
+                    if isinstance(val, str) and (val.strip().startswith("eyJ") or len(val.strip()) > 80):
+                        cc_api_key = val.strip()
+                        break
+                    elif isinstance(val, dict):
+                        for sub_k, sub_v in val.items():
+                            if isinstance(sub_v, str) and (sub_v.strip().startswith("eyJ") or len(sub_v.strip()) > 80):
+                                cc_api_key = sub_v.strip()
+                                break
+    except Exception as e:
+        print(f"Error reading secrets: {e}")
                     
     pdf_success = False
     if compile_pdf:
         if not cc_api_key:
-            st.warning("CloudConvert API key not found in st.secrets. Generated .docx document only.")
+            st.warning(f"CloudConvert API key not found. Detected keys in st.secrets: {detected_keys}. If you just saved secrets, please click 'Reboot app' in the lower-right menu.")
         else:
             try:
                 import requests, time
@@ -785,7 +808,7 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
                     upload_task = next((t for t in job_data["tasks"] if t["name"] == "import-file"), None)
                     upload_task_id = upload_task["id"]
                     
-                    # Poll for upload form parameters if not ready immediately
+                    # Poll for upload form if not ready immediately
                     for _ in range(10):
                         if upload_task.get("result", {}).get("form"):
                             break
@@ -841,19 +864,23 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
     
     # Retrieve Google Drive Webhook URL robustly
     gas_webhook_url = ""
-    for k in ["GOOGLE_DRIVE_WEBHOOK_URL", "google_drive_webhook_url", "DRIVE_WEBHOOK_URL", "webhook_url"]:
-        if k in st.secrets:
-            val = st.secrets[k]
-            if isinstance(val, str) and val.strip():
-                gas_webhook_url = val.strip()
-                break
-            elif isinstance(val, dict):
-                for sub_k in ["url", "webhook_url"]:
-                    if sub_k in val and val[sub_k]:
-                        gas_webhook_url = str(val[sub_k]).strip()
+    try:
+        if hasattr(st, "secrets"):
+            for k in ["GOOGLE_DRIVE_WEBHOOK_URL", "google_drive_webhook_url", "DRIVE_WEBHOOK_URL", "webhook_url"]:
+                if k in st.secrets:
+                    val = st.secrets[k]
+                    if isinstance(val, str) and val.strip():
+                        gas_webhook_url = val.strip()
                         break
-                if gas_webhook_url:
-                    break
+                    elif isinstance(val, dict):
+                        for sub_k in ["url", "webhook_url"]:
+                            if sub_k in val and val[sub_k]:
+                                gas_webhook_url = str(val[sub_k]).strip()
+                                break
+                        if gas_webhook_url:
+                            break
+    except Exception:
+        pass
 
     if gas_webhook_url and os.path.exists(final_output_path):
         try:
