@@ -36,35 +36,61 @@ import requests
 
 def upload_file_to_drive(local_path, project_name="Manual entry"):
     """Uploads quotes to Google Drive organized into project subfolders."""
-    # Checks both top-level and inside [gcp_service_account]
     webhook_url = st.secrets.get("gdrive_webhook_url") or st.secrets.get("gcp_service_account", {}).get("gdrive_webhook_url")
-
     if not webhook_url:
-        st.warning("⚠️ Google Drive webhook URL not configured in Secrets.")
         return None
     try:
         with open(local_path, "rb") as f:
             b64_content = base64.b64encode(f.read()).decode("utf-8")
 
         mime_type = "application/pdf" if local_path.endswith(".pdf") else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-
         payload = {
             "fileName": os.path.basename(local_path),
             "base64": b64_content,
             "mimeType": mime_type,
             "projectName": project_name
         }
-
         response = requests.post(webhook_url, json=payload, timeout=60)
         res_data = response.json()
-
         if res_data.get("status") == "success":
             return res_data.get("url")
-        else:
-            st.error(f"⚠️ Drive script error: {res_data.get('message')}")
-            return None
+        return None
     except Exception as e:
-        st.error(f"⚠️ Upload error: {e}")
+        print(f"Drive upload failed: {e}")
+        return None
+
+def delete_quote_from_drive(project_name, file_prefix):
+    """Deletes matching quote files directly from Google Drive."""
+    webhook_url = st.secrets.get("gdrive_webhook_url") or st.secrets.get("gcp_service_account", {}).get("gdrive_webhook_url")
+    if not webhook_url:
+        return
+    try:
+        payload = {
+            "action": "delete_quote",
+            "projectName": project_name,
+            "prefix": file_prefix
+        }
+        requests.post(webhook_url, json=payload, timeout=30)
+    except Exception as e:
+        print(f"Drive deletion failed: {e}")
+
+def get_live_drive_files(project_name):
+    """Gets the list of files currently existing in Google Drive for this project."""
+    webhook_url = st.secrets.get("gdrive_webhook_url") or st.secrets.get("gcp_service_account", {}).get("gdrive_webhook_url")
+    if not webhook_url:
+        return None
+    try:
+        payload = {
+            "action": "list_quotes",
+            "projectName": project_name
+        }
+        response = requests.post(webhook_url, json=payload, timeout=30)
+        res_data = response.json()
+        if res_data.get("status") == "success":
+            return res_data.get("files", [])
+        return None
+    except Exception as e:
+        print(f"Drive file list fetch failed: {e}")
         return None
 
 HISTORY = Path(__file__).with_name('lumeon_calculator_history.json')
@@ -1278,28 +1304,68 @@ if page == 'Projects':
 
     st.divider()
     st.subheader(f"Quote History: {project_name}")
+
+    # Synchronize with live Google Drive files
+    live_drive_files = get_live_drive_files(project_name)
+    if live_drive_files is not None:
+        drive_filenames = {f["name"] for f in live_drive_files}
+        drive_urls = {f["name"]: f["url"] for f in live_drive_files}
+
+        # Filter out quotes that were deleted directly in Google Drive
+        synced_quotes = []
+        for q in p_quotes:
+            fname = q.get('filename', '')
+            prefix = fname.rsplit('.', 1)[0]
+            # Check if either the PDF or DOCX still exists in Drive
+            has_in_drive = any(df.startswith(prefix) for df in drive_filenames)
+            if has_in_drive:
+                # Attach live Drive link if available
+                q['drive_url'] = drive_urls.get(fname, drive_urls.get(prefix + '.pdf', drive_urls.get(prefix + '.docx', '')))
+                synced_quotes.append(q)
+
+        if len(synced_quotes) != len(p_quotes):
+            p_quotes = synced_quotes
+            if not isinstance(projects[project_name], dict):
+                projects[project_name] = {'panels': projects[project_name], 'manual_packages': [], 'waste_manual_packages': [], 'quotes': []}
+            projects[project_name]['quotes'] = p_quotes
+            save_projects(projects)
+
     if p_quotes:
-        q_df = pd.DataFrame(p_quotes)
-        st.dataframe(q_df, hide_index=True, width='stretch')
+        # Display clean history table
+        display_data = []
+        for q in p_quotes:
+            display_data.append({
+                "Date": q.get('timestamp', ''),
+                "Filename": q.get('filename', ''),
+                "Transparency": q.get('transparency', 'Unknown'),
+                "Status": q.get('status', 'Generated')
+            })
+        st.dataframe(pd.DataFrame(display_data), hide_index=True, width='stretch')
+
         st.write("Manage Quotes:")
-        q_cols = st.columns([3, 2, 2, 2])
+        q_cols = st.columns([4, 2, 2])
         q_options = [f"{q['timestamp']} | {q['filename']} | {q.get('transparency', 'Unknown')}" for q in p_quotes]
         sel_q = q_cols[0].selectbox("Select Quote", q_options, label_visibility="collapsed")
         sel_idx = q_options.index(sel_q)
+        selected_quote = p_quotes[sel_idx]
 
-        if q_cols[1].button("Mark as Latest Shared", width='stretch'):
-            target_q = p_quotes[sel_idx]
-            target_transparency = target_q.get('transparency')
+        # 1. Mark as Latest Shared
+        if q_cols[1].button("Mark Latest Shared", width='stretch'):
+            target_transparency = selected_quote.get('transparency')
             if not target_transparency:
                 for t in ['88%', '92%', '96%']:
-                    if t in target_q['filename']: target_transparency = t; break
+                    if t in selected_quote['filename']:
+                        target_transparency = t
+                        break
 
             for q in p_quotes:
-                q_transparency = q.get('transparency')
-                if not q_transparency:
+                q_trans = q.get('transparency')
+                if not q_trans:
                     for t in ['88%', '92%', '96%']:
-                        if t in q['filename']: q_transparency = t; break
-                if q['status'] == 'Latest Shared' and q_transparency == target_transparency:
+                        if t in q['filename']:
+                            q_trans = t
+                            break
+                if q['status'] == 'Latest Shared' and q_trans == target_transparency:
                     q['status'] = 'Archived'
 
             p_quotes[sel_idx]['status'] = 'Latest Shared'
@@ -1307,47 +1373,41 @@ if page == 'Projects':
                 projects[project_name] = {'panels': projects[project_name], 'manual_packages': [], 'waste_manual_packages': [], 'quotes': []}
             projects[project_name]['quotes'] = p_quotes
             save_projects(projects)
-            st.success(f"Quote marked as the latest shared for {target_transparency} transparency.")
+            st.success(f"Quote marked as Latest Shared.")
             st.rerun()
 
-        if q_cols[2].button("Open File", width='stretch'):
-            target_q = p_quotes[sel_idx]
-            prefix = target_q['filename'].rsplit('.', 1)[0]
-            safe_proj = "".join(ch for ch in project_name if ch.isalnum() or ch in (' ', '_', '-')).strip()
-            if not safe_proj: safe_proj = "Manual_Entry"
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            proj_dir = os.path.join(base_dir, "Generated Quotes", safe_proj)
-            pdf_path = os.path.join(proj_dir, prefix + '.pdf')
-            docx_path = os.path.join(proj_dir, prefix + '.docx')
-            path_to_open = pdf_path if os.path.exists(pdf_path) else docx_path
-            if os.path.exists(path_to_open):
-                try:
-                    if platform.system() == 'Windows': os.startfile(path_to_open)
-                    elif platform.system() == 'Darwin': subprocess.call(('open', path_to_open))
-                    else: subprocess.call(('xdg-open', path_to_open))
-                except Exception as e: st.error(f"Failed to open file: {e}")
-            else: st.error(f"File not found on disk: {path_to_open}")
-
-        if q_cols[3].button("Delete Quote", width='stretch'):
+        # 2. Delete Quote (From JSON AND from Google Drive)
+        if q_cols[2].button("Delete Quote", type="primary", width='stretch'):
             deleted_q = p_quotes.pop(sel_idx)
             prefix = deleted_q['filename'].rsplit('.', 1)[0]
-            safe_proj = "".join(ch for ch in project_name if ch.isalnum() or ch in (' ', '_', '-')).strip()
-            if not safe_proj: safe_proj = "Manual_Entry"
+
+            # Trash the files in Google Drive
+            delete_quote_from_drive(project_name, prefix)
+
+            # Also clean local container disk if present
+            safe_proj = "".join(ch for ch in project_name if ch.isalnum() or ch in (' ', '_', '-')).strip() or "Manual_Entry"
             base_dir = os.path.dirname(os.path.abspath(__file__))
             proj_dir = os.path.join(base_dir, "Generated Quotes", safe_proj)
             for ext in ['.pdf', '.docx']:
-                file_path = os.path.join(proj_dir, prefix + ext)
-                if os.path.exists(file_path):
-                    try: os.remove(file_path)
+                f_path = os.path.join(proj_dir, prefix + ext)
+                if os.path.exists(f_path):
+                    try: os.remove(f_path)
                     except: pass
+
             if not isinstance(projects[project_name], dict):
                 projects[project_name] = {'panels': projects[project_name], 'manual_packages': [], 'waste_manual_packages': [], 'quotes': []}
             projects[project_name]['quotes'] = p_quotes
             save_projects(projects)
-            st.success("Quote and physical files deleted successfully.")
+            st.success(f"Quote '{deleted_q['filename']}' deleted from project and Google Drive.")
             st.rerun()
+
+        # Direct Google Drive link for selected quote
+        if selected_quote.get('drive_url'):
+            st.markdown(f"☁️ [Open Selected Quote in Google Drive]({selected_quote['drive_url']})")
+
     else:
         st.info("No quotes have been generated for this project yet.")
+
     st.stop()
 
 
