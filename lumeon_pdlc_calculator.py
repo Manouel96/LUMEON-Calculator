@@ -649,7 +649,7 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
     fill_bookmark(doc, "bmQuoteNum", quote_num)
     fill_bookmark(doc, "bmGrandTotal", f"{total_amd:,.0f}")
     
-    # Target widths: 3420, 1350, 1170, 1620, 1440 dxa (Sum = 9000 dxa / 450 pt)
+    # Enforce exact table column alignment: 3420, 1350, 1170, 1620, 1440 dxa (Sum = 9000 dxa / 450 pt)
     TARGET_WIDTHS_DXA = [3420, 1350, 1170, 1620, 1440]
     TARGET_WIDTHS_EMU = [docx.shared.Emu(int(w * 914400 / 1440)) for w in TARGET_WIDTHS_DXA]
     
@@ -740,10 +740,27 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
     pdf_path = os.path.join(output_dir, f"{file_prefix}.pdf")
     doc.save(docx_path)
     
+    # Retrieve CloudConvert API Key robustly
+    cc_api_key = ""
+    for k in ["CLOUDCONVERT_API_KEY", "cloudconvert_api_key", "CLOUDCONVERT_KEY", "cloudconvert_key", "CLOUDCONVERT_TOKEN", "cloudconvert_token", "CLOUDCONVERT", "cloudconvert"]:
+        if k in st.secrets:
+            val = st.secrets[k]
+            if isinstance(val, str) and val.strip():
+                cc_api_key = val.strip()
+                break
+            elif isinstance(val, dict):
+                for sub_k in ["api_key", "apiKey", "token", "key"]:
+                    if sub_k in val and val[sub_k]:
+                        cc_api_key = str(val[sub_k]).strip()
+                        break
+                if cc_api_key:
+                    break
+                    
     pdf_success = False
     if compile_pdf:
-        cc_api_key = st.secrets.get("CLOUDCONVERT_API_KEY", "")
-        if cc_api_key:
+        if not cc_api_key:
+            st.warning("CloudConvert API key not found in st.secrets. Generated .docx document only.")
+        else:
             try:
                 import requests, time
                 headers = {"Authorization": f"Bearer {cc_api_key}", "Content-Type": "application/json"}
@@ -765,35 +782,51 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
                 res = requests.post("https://api.cloudconvert.com/v2/jobs", headers=headers, json=payload, timeout=30)
                 if res.status_code == 201:
                     job_data = res.json()["data"]
-                    upload_task = next(t for t in job_data["tasks"] if t["name"] == "import-file")
-                    upload_url = upload_task["result"]["form"]["url"]
-                    upload_params = upload_task["result"]["form"]["parameters"]
+                    upload_task = next((t for t in job_data["tasks"] if t["name"] == "import-file"), None)
+                    upload_task_id = upload_task["id"]
                     
-                    with open(docx_path, "rb") as f:
-                        files = {"file": f}
-                        requests.post(upload_url, data=upload_params, files=files, timeout=60)
-                        
-                    job_id = job_data["id"]
-                    for _ in range(30):
-                        time.sleep(1)
-                        poll_res = requests.get(f"https://api.cloudconvert.com/v2/jobs/{job_id}", headers=headers, timeout=15)
-                        if poll_res.status_code == 200:
-                            status = poll_res.json()["data"]["status"]
-                            if status == "finished":
-                                export_task = next(t for t in poll_res.json()["data"]["tasks"] if t["name"] == "export-file")
-                                file_url = export_task["result"]["files"][0]["url"]
-                                pdf_bytes = requests.get(file_url, timeout=30).content
-                                with open(pdf_path, "wb") as pf:
-                                    pf.write(pdf_bytes)
-                                pdf_success = True
-                                break
-                            elif status == "error":
-                                break
+                    # Poll for upload form parameters if not ready immediately
+                    for _ in range(10):
+                        if upload_task.get("result", {}).get("form"):
+                            break
+                        time.sleep(0.5)
+                        t_res = requests.get(f"https://api.cloudconvert.com/v2/tasks/{upload_task_id}", headers=headers, timeout=10)
+                        if t_res.status_code == 200:
+                            upload_task = t_res.json()["data"]
+                            
+                    form = upload_task.get("result", {}).get("form")
+                    if form and "url" in form:
+                        with open(docx_path, "rb") as f:
+                            files = {"file": f}
+                            requests.post(form["url"], data=form["parameters"], files=files, timeout=60)
+                            
+                        job_id = job_data["id"]
+                        for _ in range(40):
+                            time.sleep(1)
+                            poll_res = requests.get(f"https://api.cloudconvert.com/v2/jobs/{job_id}", headers=headers, timeout=15)
+                            if poll_res.status_code == 200:
+                                job_status = poll_res.json()["data"]["status"]
+                                if job_status == "finished":
+                                    export_task = next(t for t in poll_res.json()["data"]["tasks"] if t["name"] == "export-file")
+                                    file_url = export_task["result"]["files"][0]["url"]
+                                    pdf_bytes = requests.get(file_url, timeout=30).content
+                                    with open(pdf_path, "wb") as pf:
+                                        pf.write(pdf_bytes)
+                                    pdf_success = True
+                                    break
+                                elif job_status == "error":
+                                    err_msg = poll_res.json()["data"].get("message", "CloudConvert conversion failed.")
+                                    st.error(f"CloudConvert Error: {err_msg}")
+                                    break
+                    else:
+                        st.error(f"Could not retrieve CloudConvert upload form: {upload_task.get('message', 'Timeout waiting for form')}")
+                else:
+                    st.error(f"CloudConvert Job Creation Error ({res.status_code}): {res.text}")
             except Exception as e:
-                print(f"CloudConvert Conversion Error: {e}")
+                st.error(f"CloudConvert Exception: {e}")
 
-        # Local conversion fallback
-        if not pdf_success:
+        # Local fallback if on Windows/development
+        if not pdf_success and not cc_api_key:
             try:
                 import pythoncom
                 from docx2pdf import convert
@@ -801,12 +834,27 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
                 convert(docx_path, pdf_path)
                 pythoncom.CoUninitialize()
                 pdf_success = True
-            except Exception as e:
-                print(f"Local PDF Conversion Failed: {e}")
+            except Exception:
+                pass
                 
-    # Auto-upload to Google Drive via Google Apps Script Webhook
     final_output_path = (pdf_path if (compile_pdf and pdf_success) else docx_path)
-    gas_webhook_url = st.secrets.get("GOOGLE_DRIVE_WEBHOOK_URL", "")
+    
+    # Retrieve Google Drive Webhook URL robustly
+    gas_webhook_url = ""
+    for k in ["GOOGLE_DRIVE_WEBHOOK_URL", "google_drive_webhook_url", "DRIVE_WEBHOOK_URL", "webhook_url"]:
+        if k in st.secrets:
+            val = st.secrets[k]
+            if isinstance(val, str) and val.strip():
+                gas_webhook_url = val.strip()
+                break
+            elif isinstance(val, dict):
+                for sub_k in ["url", "webhook_url"]:
+                    if sub_k in val and val[sub_k]:
+                        gas_webhook_url = str(val[sub_k]).strip()
+                        break
+                if gas_webhook_url:
+                    break
+
     if gas_webhook_url and os.path.exists(final_output_path):
         try:
             import requests, base64
