@@ -34,8 +34,8 @@ def get_drive_service():
 import base64
 import requests
 
-def upload_file_to_drive(local_path):
-    """Uploads quotes to Google Drive via secure Apps Script bridge without quota limits."""
+def upload_file_to_drive(local_path, project_name="Manual entry"):
+    """Uploads quotes to Google Drive organized into project subfolders."""
     # Checks both top-level and inside [gcp_service_account]
     webhook_url = st.secrets.get("gdrive_webhook_url") or st.secrets.get("gcp_service_account", {}).get("gdrive_webhook_url")
 
@@ -51,7 +51,8 @@ def upload_file_to_drive(local_path):
         payload = {
             "fileName": os.path.basename(local_path),
             "base64": b64_content,
-            "mimeType": mime_type
+            "mimeType": mime_type,
+            "projectName": project_name
         }
 
         response = requests.post(webhook_url, json=payload, timeout=60)
@@ -1760,15 +1761,15 @@ if page == 'Calculator':
                         docx_path = file_path
                         pdf_path = file_path[:-5] + '.pdf'
 
-                    # Automatically upload both files to Google Drive
+                    # Automatically upload both files into the project subfolder
                     drive_links = []
                     if os.path.exists(docx_path):
-                        link_docx = upload_file_to_drive(docx_path)
+                        link_docx = upload_file_to_drive(docx_path, project_name=proj_name)
                         if link_docx:
                             drive_links.append(("Word", link_docx))
 
                     if os.path.exists(pdf_path):
-                        link_pdf = upload_file_to_drive(pdf_path)
+                        link_pdf = upload_file_to_drive(pdf_path, project_name=proj_name)
                         if link_pdf:
                             drive_links.append(("PDF", link_pdf))
 
@@ -1792,7 +1793,7 @@ if page == 'Calculator':
                         projects[proj_name] = synced_projects[proj_name]
                 else:
                     st.error(msg)
-
+                    
     if st.session_state.get('generated_quote_path'):
         st.success(st.session_state.get('quote_success_msg', 'Ready for download!'))
         file_path = st.session_state.generated_quote_path
