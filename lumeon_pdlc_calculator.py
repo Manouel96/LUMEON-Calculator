@@ -7,6 +7,31 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 import docx
+import google.auth
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from google.oauth2 import service_account
+
+def upload_file_to_drive(local_path, folder_id="1gNfIX4RjSXuKB73r2j8o5VOHbeSRnRwS"):
+    """Uploads a local file to the LUMEON Google Drive Generated Quotes folder."""
+    try:
+        if "gcp_service_account" not in st.secrets:
+            return None
+        creds = service_account.Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],
+            scopes=["https://www.googleapis.com/auth/drive.file"]
+        )
+        service = build("drive", "v3", credentials=creds)
+        file_metadata = {
+            "name": os.path.basename(local_path),
+            "parents": [folder_id]
+        }
+        media = MediaFileUpload(local_path, resumable=True)
+        file = service.files().create(body=file_metadata, media_body=media, fields="id, webViewLink").execute()
+        return file.get("webViewLink")
+    except Exception as e:
+        print(f"Drive upload failed: {e}")
+        return None
 
 HISTORY = Path(__file__).with_name('lumeon_calculator_history.json')
 PROJECTS_FILE = Path(__file__).with_name('lumeon_projects.json')
