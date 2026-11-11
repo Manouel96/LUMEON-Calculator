@@ -603,30 +603,40 @@ def convert_with_cloudconvert(docx_path, pdf_path):
         print(f"CloudConvert conversion error: {e}")
         return False
 
-def generate_quote(client_type, warranty_yes_no, measurement, client_name, client_company, client_address, client_phone, warranty_text, transformer_text, remote_text, manual_date, unit_price, total_amd, panels_df, transparency, project_name="Manual_Entry", enforce_500mm=True, compile_pdf=True):
+def generate_quote(client_type, warranty_yes_no, measurement, client_name, client_company, client_address, client_phone, warranty_text, transformer_text, remote_text, manual_date, unit_price, total_amd, panels_df, transparency, project_name="Manual_Entry", enforce_500mm=True):
     base_path = os.path.dirname(os.path.abspath(__file__))
     templates_dir = os.path.join(base_path, "Quote Templates")
     safe_proj = "".join(c for c in project_name if c.isalnum() or c in (' ', '_', '-')).strip()
-    if not safe_proj: safe_proj = "Manual_Entry"
+    if not safe_proj:
+        safe_proj = "Manual_Entry"
     output_dir = os.path.join(base_path, "Generated Quotes", safe_proj)
     os.makedirs(templates_dir, exist_ok=True)
     os.makedirs(output_dir, exist_ok=True)
+    
     template_name = ""
     if client_type == "Company":
-        if warranty_yes_no == "Yes": template_name = "LUMEON_Quote_Template_Company_Warranty_Provided.docx" if measurement == "Provided" else "LUMEON_Quote_Template_Company_Warranty_Measured.docx"
-        else: template_name = "LUMEON_Quote_Template_Company_NoWarranty_Provided.docx" if measurement == "Provided" else "LUMEON_Quote_Template_Company_NoWarranty_Measured.docx"
+        if warranty_yes_no == "Yes":
+            template_name = "LUMEON_Quote_Template_Company_Warranty_Provided.docx" if measurement == "Provided" else "LUMEON_Quote_Template_Company_Warranty_Measured.docx"
+        else:
+            template_name = "LUMEON_Quote_Template_Company_NoWarranty_Provided.docx" if measurement == "Provided" else "LUMEON_Quote_Template_Company_NoWarranty_Measured.docx"
     elif client_type == "Personal":
-        if warranty_yes_no == "Yes": template_name = "LUMEON_Quote_Template_Personal_Warranty_Provided.docx" if measurement == "Provided" else "LUMEON_Quote_Template_Personal_Warranty_Measured.docx"
-        else: template_name = "LUMEON_Quote_Template_Personal_NoWarranty_Provided.docx" if measurement == "Provided" else "LUMEON_Quote_Template_Personal_NoWarranty_Measured.docx"
-    else: return None, "Please select 'Personal' or 'Company' for Client Type."
+        if warranty_yes_no == "Yes":
+            template_name = "LUMEON_Quote_Template_Personal_Warranty_Provided.docx" if measurement == "Provided" else "LUMEON_Quote_Template_Personal_Warranty_Measured.docx"
+        else:
+            template_name = "LUMEON_Quote_Template_Personal_NoWarranty_Provided.docx" if measurement == "Provided" else "LUMEON_Quote_Template_Personal_NoWarranty_Measured.docx"
+    else:
+        return None, "Please select 'Personal' or 'Company' for Client Type."
+        
     template_path = os.path.join(templates_dir, template_name)
-    if not os.path.exists(template_path): return None, f"Template not found at: {template_path}"
+    if not os.path.exists(template_path):
+        return None, f"Template not found at: {template_path}"
+        
     base_date = manual_date if manual_date else datetime.now()
     issue_date = base_date.strftime("%d/%m/%Y")
     valid_date = (base_date + timedelta(days=14)).strftime("%d/%m/%Y")
     quote_num = datetime.now().strftime("%y%m%d%H%M")
+    
     doc = docx.Document(template_path)
-
     fill_bookmark(doc, "bmCustomerName", client_name)
     fill_bookmark(doc, "bmCompany", client_company)
     fill_bookmark(doc, "bmAddress", client_address)
@@ -638,6 +648,58 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
     fill_bookmark(doc, "bmValidDate", valid_date)
     fill_bookmark(doc, "bmQuoteNum", quote_num)
     fill_bookmark(doc, "bmGrandTotal", f"{total_amd:,.0f}")
+    
+    # Target widths: 3420, 1350, 1170, 1620, 1440 dxa (Sum = 9000 dxa / 450 pt)
+    TARGET_WIDTHS_DXA = [3420, 1350, 1170, 1620, 1440]
+    TARGET_WIDTHS_EMU = [docx.shared.Emu(int(w * 914400 / 1440)) for w in TARGET_WIDTHS_DXA]
+    
+    def align_table(tbl):
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        
+        tblPr = tbl._tbl.tblPr
+        tblW = tblPr.find(qn("w:tblW"))
+        if tblW is None:
+            tblW = OxmlElement("w:tblW")
+            tblPr.append(tblW)
+        tblW.set(qn("w:w"), "9000")
+        tblW.set(qn("w:type"), "dxa")
+        
+        tblInd = tblPr.find(qn("w:tblInd"))
+        if tblInd is None:
+            tblInd = OxmlElement("w:tblInd")
+            tblPr.append(tblInd)
+        tblInd.set(qn("w:w"), "108")
+        tblInd.set(qn("w:type"), "dxa")
+        
+        tblLayout = tblPr.find(qn("w:tblLayout"))
+        if tblLayout is None:
+            tblLayout = OxmlElement("w:tblLayout")
+            tblPr.append(tblLayout)
+        tblLayout.set(qn("w:type"), "fixed")
+        
+        tblGrid = tbl._tbl.tblGrid
+        if tblGrid is not None:
+            tbl._tbl.remove(tblGrid)
+        new_grid = OxmlElement("w:tblGrid")
+        for w_dxa in TARGET_WIDTHS_DXA:
+            col = OxmlElement("w:gridCol")
+            col.set(qn("w:w"), str(w_dxa))
+            new_grid.append(col)
+        tblPr.addnext(new_grid)
+        
+        for row in tbl.rows:
+            for idx, cell in enumerate(row.cells):
+                w_dxa = TARGET_WIDTHS_DXA[idx]
+                w_emu = TARGET_WIDTHS_EMU[idx]
+                cell.width = w_emu
+                tcPr = cell._tc.get_or_add_tcPr()
+                tcW = tcPr.find(qn("w:tcW"))
+                if tcW is None:
+                    tcW = OxmlElement("w:tcW")
+                    tcPr.append(tcW)
+                tcW.set(qn("w:w"), str(w_dxa))
+                tcW.set(qn("w:type"), "dxa")
 
     if len(doc.tables) >= 2:
         tbl = doc.tables[1]
@@ -649,40 +711,91 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
             length_m = float(row['Length (mm)']) / 1000.0
             print_width_m = max(exact_width_m, 0.5) if enforce_500mm and exact_width_m < 0.5 else exact_width_m
             line_total = qty * print_width_m * length_m * unit_price
-            if i == 0: cells = tbl.rows[insert_idx].cells
+            
+            if i == 0:
+                cells = tbl.rows[insert_idx].cells
             else:
                 prev_row = tbl.rows[insert_idx - 1]
                 new_tr = copy.deepcopy(prev_row._tr)
                 prev_row._tr.addnext(new_tr)
                 cells = tbl.rows[insert_idx].cells
-                for cell in cells: cell.text = ""
+                for cell in cells:
+                    cell.text = ""
+                    
             cells[0].text = f"LUMEON Smart Film (Self-Adhesive) {transparency} Color: White"
             cells[1].text = f"{print_width_m * 100:g} cm x {length_m * 100:g} cm"
             cells[2].text = str(qty)
             cells[3].text = f"{unit_price:,.0f}"
             cells[4].text = f"{line_total:,.0f}"
             insert_idx += 1
-
-    # Lock Table 1 and Table 2 column widths identically so their borders align 100%
-    standard_widths = [docx.shared.Cm(6.0), docx.shared.Cm(2.4), docx.shared.Cm(1.8), docx.shared.Cm(2.84), docx.shared.Cm(2.84)]
-    if len(doc.tables) >= 3:
-        for t in [doc.tables[1], doc.tables[2]]:
-            t.autofit = False
-            for row in t.rows:
-                for idx, w in enumerate(standard_widths):
-                    if idx < len(row.cells):
-                        row.cells[idx].width = w
-
+            
+        align_table(doc.tables[1])
+        if len(doc.tables) >= 3:
+            align_table(doc.tables[2])
+            
     safe_company = client_company.replace(" ", "_") if client_company else "NoCompany"
     safe_name = client_name.replace(" ", "_") if client_name else "NoName"
     file_prefix = f"LUMEON_Quote#{quote_num}_{safe_name}_{safe_company}_{transparency}"
     docx_path = os.path.join(output_dir, f"{file_prefix}.docx")
     pdf_path = os.path.join(output_dir, f"{file_prefix}.pdf")
     doc.save(docx_path)
+    
+    # CloudConvert & Webhook Sync
     pdf_success = False
+    cc_api_key = st.secrets.get("CLOUDCONVERT_API_KEY", "")
+    gas_webhook_url = st.secrets.get("GOOGLE_DRIVE_WEBHOOK_URL", "")
+    
+    if cc_api_key:
+        try:
+            import requests
+            headers = {"Authorization": f"Bearer {cc_api_key}", "Content-Type": "application/json"}
+            payload = {
+                "tasks": {
+                    "import-file": {"operation": "import/upload"},
+                    "convert-to-pdf": {
+                        "operation": "convert",
+                        "input": "import-file",
+                        "output_format": "pdf",
+                        "engine": "office"
+                    },
+                    "export-file": {
+                        "operation": "export/url",
+                        "input": "convert-to-pdf"
+                    }
+                }
+            }
+            res = requests.post("https://api.cloudconvert.com/v2/jobs", headers=headers, json=payload, timeout=30)
+            if res.status_code == 201:
+                job_data = res.json()["data"]
+                upload_task = next(t for t in job_data["tasks"] if t["name"] == "import-file")
+                upload_url = upload_task["result"]["form"]["url"]
+                upload_params = upload_task["result"]["form"]["parameters"]
+                
+                with open(docx_path, "rb") as f:
+                    files = {"file": f}
+                    requests.post(upload_url, data=upload_params, files=files, timeout=60)
+                    
+                job_id = job_data["id"]
+                for _ in range(30):
+                    time.sleep(1)
+                    poll_res = requests.get(f"https://api.cloudconvert.com/v2/jobs/{job_id}", headers=headers, timeout=15)
+                    if poll_res.status_code == 200:
+                        status = poll_res.json()["data"]["status"]
+                        if status == "finished":
+                            export_task = next(t for t in poll_res.json()["data"]["tasks"] if t["name"] == "export-file")
+                            file_url = export_task["result"]["files"][0]["url"]
+                            pdf_bytes = requests.get(file_url, timeout=30).content
+                            with open(pdf_path, "wb") as pf:
+                                pf.write(pdf_bytes)
+                            pdf_success = True
+                            break
+                        elif status == "error":
+                            break
+        except Exception as e:
+            print(f"CloudConvert Conversion Error: {e}")
 
-    if compile_pdf:
-        # 1. Try local Windows MS Word (if on desktop PC)
+    # Fallback to local conversion if CloudConvert is unconfigured or fails
+    if not pdf_success:
         try:
             import pythoncom
             from docx2pdf import convert
@@ -690,12 +803,27 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
             convert(docx_path, pdf_path)
             pythoncom.CoUninitialize()
             pdf_success = True
-        except Exception:
-            # 2. Try CloudConvert
-            if convert_with_cloudconvert(docx_path, pdf_path):
-                pdf_success = True
-
-    return (pdf_path if pdf_success else docx_path), "Success"
+        except Exception as e:
+            print(f"Local PDF Conversion Failed: {e}")
+            
+    # Auto-upload to Google Drive via Google Apps Script Webhook
+    final_output_path = pdf_path if pdf_success else docx_path
+    if gas_webhook_url and os.path.exists(final_output_path):
+        try:
+            import requests, base64
+            with open(final_output_path, "rb") as f:
+                b64_content = base64.b64encode(f.read()).decode("utf-8")
+            payload = {
+                "filename": os.path.basename(final_output_path),
+                "folderId": "1gNfIX4RjSXuKB73r2j8o5VOHbeSRnRwS",
+                "fileData": b64_content,
+                "mimeType": "application/pdf" if pdf_success else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            }
+            requests.post(gas_webhook_url, json=payload, timeout=20)
+        except Exception as e:
+            print(f"Drive Webhook upload error: {e}")
+            
+    return final_output_path, "Success"
 
 st.set_page_config(page_title='LUMEON Calculator', layout='wide')
 
