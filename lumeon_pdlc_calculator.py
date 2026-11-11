@@ -603,7 +603,7 @@ def convert_with_cloudconvert(docx_path, pdf_path):
         print(f"CloudConvert conversion error: {e}")
         return False
 
-def generate_quote(client_type, warranty_yes_no, measurement, client_name, client_company, client_address, client_phone, warranty_text, transformer_text, remote_text, manual_date, unit_price, total_amd, panels_df, transparency, project_name="Manual_Entry", enforce_500mm=True):
+def generate_quote(client_type, warranty_yes_no, measurement, client_name, client_company, client_address, client_phone, warranty_text, transformer_text, remote_text, manual_date, unit_price, total_amd, panels_df, transparency, project_name="Manual_Entry", enforce_500mm=True, compile_pdf=True, **kwargs):
     base_path = os.path.dirname(os.path.abspath(__file__))
     templates_dir = os.path.join(base_path, "Quote Templates")
     safe_proj = "".join(c for c in project_name if c.isalnum() or c in (' ', '_', '-')).strip()
@@ -740,74 +740,73 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
     pdf_path = os.path.join(output_dir, f"{file_prefix}.pdf")
     doc.save(docx_path)
     
-    # CloudConvert & Webhook Sync
     pdf_success = False
-    cc_api_key = st.secrets.get("CLOUDCONVERT_API_KEY", "")
-    gas_webhook_url = st.secrets.get("GOOGLE_DRIVE_WEBHOOK_URL", "")
-    
-    if cc_api_key:
-        try:
-            import requests
-            headers = {"Authorization": f"Bearer {cc_api_key}", "Content-Type": "application/json"}
-            payload = {
-                "tasks": {
-                    "import-file": {"operation": "import/upload"},
-                    "convert-to-pdf": {
-                        "operation": "convert",
-                        "input": "import-file",
-                        "output_format": "pdf",
-                        "engine": "office"
-                    },
-                    "export-file": {
-                        "operation": "export/url",
-                        "input": "convert-to-pdf"
+    if compile_pdf:
+        cc_api_key = st.secrets.get("CLOUDCONVERT_API_KEY", "")
+        if cc_api_key:
+            try:
+                import requests, time
+                headers = {"Authorization": f"Bearer {cc_api_key}", "Content-Type": "application/json"}
+                payload = {
+                    "tasks": {
+                        "import-file": {"operation": "import/upload"},
+                        "convert-to-pdf": {
+                            "operation": "convert",
+                            "input": "import-file",
+                            "output_format": "pdf",
+                            "engine": "office"
+                        },
+                        "export-file": {
+                            "operation": "export/url",
+                            "input": "convert-to-pdf"
+                        }
                     }
                 }
-            }
-            res = requests.post("https://api.cloudconvert.com/v2/jobs", headers=headers, json=payload, timeout=30)
-            if res.status_code == 201:
-                job_data = res.json()["data"]
-                upload_task = next(t for t in job_data["tasks"] if t["name"] == "import-file")
-                upload_url = upload_task["result"]["form"]["url"]
-                upload_params = upload_task["result"]["form"]["parameters"]
-                
-                with open(docx_path, "rb") as f:
-                    files = {"file": f}
-                    requests.post(upload_url, data=upload_params, files=files, timeout=60)
+                res = requests.post("https://api.cloudconvert.com/v2/jobs", headers=headers, json=payload, timeout=30)
+                if res.status_code == 201:
+                    job_data = res.json()["data"]
+                    upload_task = next(t for t in job_data["tasks"] if t["name"] == "import-file")
+                    upload_url = upload_task["result"]["form"]["url"]
+                    upload_params = upload_task["result"]["form"]["parameters"]
                     
-                job_id = job_data["id"]
-                for _ in range(30):
-                    time.sleep(1)
-                    poll_res = requests.get(f"https://api.cloudconvert.com/v2/jobs/{job_id}", headers=headers, timeout=15)
-                    if poll_res.status_code == 200:
-                        status = poll_res.json()["data"]["status"]
-                        if status == "finished":
-                            export_task = next(t for t in poll_res.json()["data"]["tasks"] if t["name"] == "export-file")
-                            file_url = export_task["result"]["files"][0]["url"]
-                            pdf_bytes = requests.get(file_url, timeout=30).content
-                            with open(pdf_path, "wb") as pf:
-                                pf.write(pdf_bytes)
-                            pdf_success = True
-                            break
-                        elif status == "error":
-                            break
-        except Exception as e:
-            print(f"CloudConvert Conversion Error: {e}")
+                    with open(docx_path, "rb") as f:
+                        files = {"file": f}
+                        requests.post(upload_url, data=upload_params, files=files, timeout=60)
+                        
+                    job_id = job_data["id"]
+                    for _ in range(30):
+                        time.sleep(1)
+                        poll_res = requests.get(f"https://api.cloudconvert.com/v2/jobs/{job_id}", headers=headers, timeout=15)
+                        if poll_res.status_code == 200:
+                            status = poll_res.json()["data"]["status"]
+                            if status == "finished":
+                                export_task = next(t for t in poll_res.json()["data"]["tasks"] if t["name"] == "export-file")
+                                file_url = export_task["result"]["files"][0]["url"]
+                                pdf_bytes = requests.get(file_url, timeout=30).content
+                                with open(pdf_path, "wb") as pf:
+                                    pf.write(pdf_bytes)
+                                pdf_success = True
+                                break
+                            elif status == "error":
+                                break
+            except Exception as e:
+                print(f"CloudConvert Conversion Error: {e}")
 
-    # Fallback to local conversion if CloudConvert is unconfigured or fails
-    if not pdf_success:
-        try:
-            import pythoncom
-            from docx2pdf import convert
-            pythoncom.CoInitialize()
-            convert(docx_path, pdf_path)
-            pythoncom.CoUninitialize()
-            pdf_success = True
-        except Exception as e:
-            print(f"Local PDF Conversion Failed: {e}")
-            
+        # Local conversion fallback
+        if not pdf_success:
+            try:
+                import pythoncom
+                from docx2pdf import convert
+                pythoncom.CoInitialize()
+                convert(docx_path, pdf_path)
+                pythoncom.CoUninitialize()
+                pdf_success = True
+            except Exception as e:
+                print(f"Local PDF Conversion Failed: {e}")
+                
     # Auto-upload to Google Drive via Google Apps Script Webhook
-    final_output_path = pdf_path if pdf_success else docx_path
+    final_output_path = (pdf_path if (compile_pdf and pdf_success) else docx_path)
+    gas_webhook_url = st.secrets.get("GOOGLE_DRIVE_WEBHOOK_URL", "")
     if gas_webhook_url and os.path.exists(final_output_path):
         try:
             import requests, base64
@@ -817,7 +816,7 @@ def generate_quote(client_type, warranty_yes_no, measurement, client_name, clien
                 "filename": os.path.basename(final_output_path),
                 "folderId": "1gNfIX4RjSXuKB73r2j8o5VOHbeSRnRwS",
                 "fileData": b64_content,
-                "mimeType": "application/pdf" if pdf_success else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                "mimeType": "application/pdf" if (compile_pdf and pdf_success) else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             }
             requests.post(gas_webhook_url, json=payload, timeout=20)
         except Exception as e:
