@@ -2126,7 +2126,7 @@ if page == 'Calculator':
     q[1].metric('Packaging tare', f'{k["tare"]:.2f} kg')
     q[2].metric('Gross weight', f'{k["gross"]:.2f} kg')
     q[3].metric('Volumetric weight', f'{k["volumetric"]:.2f} kg')
-    q[4].metric('Chargeable weight', f'{k["chargeable"]:.2f} kg')
+    q[4].metric('Chargeable weight (10% Buffer)', f'{k["chargeable"]:.2f} kg')
     st.caption(k['description'])
     if k['warning']:
         st.warning(k['warning'])
