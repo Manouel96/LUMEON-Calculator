@@ -552,12 +552,9 @@ def packaging_96(df, c, ps_list, silicone_qty):
     return {'packages': total_n, 'tare': tare, 'filmkg': filmkg, 'accessories': accessory, 'gross': gross, 'volumetric': vol, 'chargeable': chargeable, 'description': '; '.join(desc), 'warning': ' '.join(warnings), 'package_list': package_list}
 
 def packaging(df, c, ps_list, silicone_qty, manual_packages, waste_manual_packages):
-    if c.get('method') != 'Manual packages':
-        base_chargeable = p['gross'] if (not c['film'].startswith('96%') and not c.get('use_volumetric_88_92', True)) else max(p['gross'], p['volumetric'])
-        p['chargeable'] = base_chargeable * 1.10  # +10% safety buffer on auto-calculated weight
-    else:
-        p['chargeable'] = max(p['gross'], p['volumetric'])
-    return p
+    if c.get('method') == 'Manual packages': p = packaging_manual(manual_packages)
+    elif c['film'].startswith('96%'): p = packaging_96(df, c, ps_list, silicone_qty)
+    else: p = packaging_88_92(df, c, ps_list, silicone_qty)
 
     waste_pct = float(c.get('waste', 0.0))
     if waste_pct > 0:
@@ -584,8 +581,9 @@ def packaging(df, c, ps_list, silicone_qty, manual_packages, waste_manual_packag
             p['description'] += f"{sep}+ {wp['description']}"
             if wp.get('warning'): p['warning'] = (p['warning'] + " " + wp['warning']).strip()
 
-    if c.get('method') != 'Manual packages' and not c['film'].startswith('96%') and not c.get('use_volumetric_88_92', True):
-        p['chargeable'] = p['gross']
+    if c.get('method') != 'Manual packages':
+        base_chargeable = p['gross'] if (not c['film'].startswith('96%') and not c.get('use_volumetric_88_92', True)) else max(p['gross'], p['volumetric'])
+        p['chargeable'] = base_chargeable * 1.10  # +10% safety buffer on auto-calculated weight
     else:
         p['chargeable'] = max(p['gross'], p['volumetric'])
     return p
