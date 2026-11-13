@@ -153,6 +153,9 @@ FILMS = {
 SHEET = [(0, 930, '1110 x 360 x 360', 6.6, 999, 33), (940, 1130, '1310 x 360 x 360', 7.4, 999, 33), (1140, 1330, '1510 x 360 x 360', 8.34, 999, 33), (1340, 1530, '1710 x 360 x 360', 9.16, 999, 33), (1540, 1730, '1910 x 360 x 360', 9.96, 999, 30), (1740, None, '2110 x 360 x 360', 12, 999, 30)]
 TUBE = [(0, 950, '1090 x 160 x 160', 1.5, 2, None), (960, 1150, '1290 x 160 x 160', 1.64, 2, None), (1160, 1350, '1490 x 160 x 160', 1.92, 2, None), (1360, 1550, '1690 x 160 x 160', 2.18, 2, None), (1560, 1750, '1890 x 160 x 160', 2.4, 1, None), (1760, None, '2090 x 160 x 160', 3, 1, None)]
 PS = {'30W': DEFAULT['ps_cost_30W'], '50W': DEFAULT['ps_cost_50W'], '100W': DEFAULT['ps_cost_100W'], '200W': DEFAULT['ps_cost_200W'], '300W': DEFAULT['ps_cost_300W'], '500W': DEFAULT['ps_cost_500W']}
+PS_WEIGHT_KG = {'30W': 1.0, '50W': 1.3, '100W': 2.0, '200W': 3.0, '300W': 4.5, '500W': 6.5}
+SEPARATE_PS_TYPES = {'300W', '500W'}
+MAX_PS_PER_SHEET_BOX = 6
 SMALL_96 = [(90, 27, 28, 7.0), (100, 27, 28, 7.3), (118, 27, 28, 7.7), (126, 27, 28, 8.0), (148, 27, 28, 8.5)]
 LARGE_96 = [(81, 34, 34, 7.0), (118, 34, 34, 8.5), (126, 34, 34, 8.8), (136, 34, 34, 9.2), (146, 34, 34, 9.7), (161, 34, 34, 10.7), (172, 34, 34, 10.85), (181, 34, 34, 11.0), (207, 34, 34, 11.5)]
 VOLUMETRIC_DIVISOR = 5000.0
@@ -335,51 +338,161 @@ def calc_waste_package(waste_area, max_width_m, film_type, method):
         dims = [float(x.strip())/10.0 for x in size.split('x')] if 'x' in size else [0.0, 0.0, 0.0]
         return {'packages': 1, 'tare': kg, 'filmkg': filmkg, 'gross': gross, 'volumetric': vol, 'description': desc, 'package_list': [{'Quantity': 1, 'Length (cm)': dims[0] if len(dims)>0 else 0, 'Width (cm)': dims[1] if len(dims)>1 else 0, 'Height (cm)': dims[2] if len(dims)>2 else 0, 'Gross weight (kg)': gross}]}
 
+def pack_accessories(boxes, ps_list, silicone_qty, max_ps_per_box=MAX_PS_PER_SHEET_BOX):
+    separate_ps_boxes = []
+    small_ps_weights = []
+    for ps in (ps_list or []):
+        ptype = str(ps.get('Type', '30W'))
+        pqty = safe_qty(ps.get('Quantity', 0))
+        if pqty <= 0:
+            continue
+        pw = PS_WEIGHT_KG.get(ptype, 1.0)
+        if ptype in SEPARATE_PS_TYPES:
+            for _ in range(pqty):
+                separate_ps_boxes.append({'L': 36.0, 'W': 36.0, 'H': 36.0, 'tare': 0.5, 'content_kg': pw, 'label': ptype})
+        else:
+            for _ in range(pqty):
+                small_ps_weights.append(pw)
+
+    overflow_ps_weights = []
+    if max_ps_per_box > 0 and boxes:
+        b_idx = 0
+        for pw in small_ps_weights:
+            while b_idx < len(boxes) and boxes[b_idx].get('ps_count', 0) >= max_ps_per_box:
+                b_idx += 1
+            if b_idx < len(boxes):
+                boxes[b_idx]['ps_count'] = boxes[b_idx].get('ps_count', 0) + 1
+                boxes[b_idx]['ps_kg'] = boxes[b_idx].get('ps_kg', 0.0) + pw
+            else:
+                overflow_ps_weights.append(pw)
+    else:
+        overflow_ps_weights = small_ps_weights
+
+    silicone_kg = max(safe_float(silicone_qty), 0.0) * 0.3
+    acc_content_kg = silicone_kg + sum(overflow_ps_weights)
+    acc_boxes = []
+    if acc_content_kg > 0:
+        n_acc = max(1, math.ceil(acc_content_kg / 15.0))
+        each_content = acc_content_kg / n_acc
+        for _ in range(n_acc):
+            acc_boxes.append({'L': 25.0, 'W': 30.0, 'H': 11.0, 'tare': 0.5, 'content_kg': each_content})
+    return separate_ps_boxes, acc_boxes
+
 def packaging_88_92(df, c, ps_list, silicone_qty):
     active = df[(df.Quantity > 0) & (df['Supplier Width (m)'] > 0) & (df['Length (m)'] > 0)].copy()
     if active.empty:
         return {'packages': 0, 'tare': 0., 'filmkg': 0., 'accessories': 0., 'gross': 0., 'volumetric': 0., 'chargeable': 0., 'description': '', 'warning': '', 'package_list': []}
-    
-    active['spec_tuple'] = active['Supplier Width (m)'].apply(lambda w: pkg_spec(w * 1000, c['method'])[0])
-    active['gap'] = active['Supplier Width (m)'].apply(lambda w: pkg_spec(w * 1000, c['method'])[1])
-    
-    total_n = 0; tare = 0.; vol = 0.; desc = []; gaps = []; package_list = []
-    
-    for spec_tuple, g in active.groupby('spec_tuple'):
-        lo, hi, size, kg, cap, maxlen = spec_tuple
-        pieces = int(g.Quantity.sum())
-        length = float((g.Quantity * g['Length (m)']).sum())
-        n = math.ceil(pieces / cap)
-        if maxlen: n = max(n, math.ceil(length / maxlen))
-        total_n += n; tare += n * kg; vol += n * box_mm_volumetric(size)
-        desc.append(f'{n} x {size} mm package')
-        
-        grp_area = float((g.Quantity * g['Supplier Width (m)'] * g['Length (m)']).sum())
-        grp_filmkg = grp_area * 0.78
-        grp_gross = n * kg + grp_filmkg
-        dims = [float(x.strip())/10.0 for x in size.split('x')] if 'x' in size else [0.0, 0.0, 0.0]
-        package_list.append({'Quantity': n, 'Length (cm)': dims[0] if len(dims)>0 else 0, 'Width (cm)': dims[1] if len(dims)>1 else 0, 'Height (cm)': dims[2] if len(dims)>2 else 0, 'Gross weight (kg)': grp_gross / max(n, 1)})
-        
-        if g['gap'].any(): gaps.append(f'Some panels fell in a 10 mm supplier range gap; next larger package selected.')
-            
-    area = float((active.Quantity * active['Supplier Width (m)'] * active['Length (m)']).sum())
-    filmkg = area * .78
-    ps_w = sum(PS.get(ps.get('Type', '30W'), 1.16) * safe_qty(ps.get('Quantity', 0)) for ps in ps_list)
-    accessories = ps_w + safe_float(silicone_qty) * 0.3
-    
+
+    method = c.get('method', 'Sheet box')
+    table = SHEET if method == 'Sheet box' else TUBE
+    boxes = []
+    gaps = []
+
+    if method == 'Sheet box':
+        items = []
+        for _, r in active.iterrows():
+            q = int(r['Quantity'])
+            w_m = float(r['Supplier Width (m)'])
+            l_m = float(r['Length (m)'])
+            spec, gap = pkg_spec(w_m * 1000.0, method)
+            if gap:
+                gaps.append('Some panels fell in a 10 mm supplier range gap; next larger package selected.')
+            tier_idx = table.index(spec)
+            for _ in range(q):
+                items.append({'tier': tier_idx, 'w': w_m, 'l': l_m, 'area': w_m * l_m})
+        items.sort(key=lambda x: (-x['tier'], -x['l']))
+
+        for item in items:
+            placed = False
+            for b in boxes:
+                if b['tier'] >= item['tier'] and (b['used_len'] + item['l'] <= b['maxlen'] + 1e-6) and (b['pieces'] + 1 <= b['cap']):
+                    b['used_len'] += item['l']
+                    b['pieces'] += 1
+                    b['filmkg'] += item['area'] * 0.78
+                    placed = True
+                    break
+            if not placed:
+                lo, hi, size, tare_kg, cap, maxlen = table[item['tier']]
+                boxes.append({
+                    'tier': item['tier'], 'size': size, 'tare': tare_kg,
+                    'cap': cap, 'maxlen': maxlen if maxlen else 9999.0,
+                    'used_len': item['l'], 'pieces': 1, 'filmkg': item['area'] * 0.78,
+                    'ps_count': 0, 'ps_kg': 0.0
+                })
+    else:
+        active['spec_tuple'] = active['Supplier Width (m)'].apply(lambda w: pkg_spec(w * 1000.0, method)[0])
+        active['gap'] = active['Supplier Width (m)'].apply(lambda w: pkg_spec(w * 1000.0, method)[1])
+        for spec_tuple, g in active.groupby('spec_tuple'):
+            lo, hi, size, kg, cap, maxlen = spec_tuple
+            pieces = int(g.Quantity.sum())
+            length = float((g.Quantity * g['Length (m)']).sum())
+            n = math.ceil(pieces / cap)
+            if maxlen: n = max(n, math.ceil(length / maxlen))
+            grp_area = float((g.Quantity * g['Supplier Width (m)'] * g['Length (m)']).sum())
+            grp_filmkg = grp_area * 0.78
+            tier_idx = table.index(spec_tuple)
+            for _ in range(n):
+                boxes.append({
+                    'tier': tier_idx, 'size': size, 'tare': kg,
+                    'cap': cap, 'maxlen': maxlen if maxlen else 9999.0,
+                    'used_len': length / n, 'pieces': pieces / n, 'filmkg': grp_filmkg / n,
+                    'ps_count': 0, 'ps_kg': 0.0
+                })
+            if g['gap'].any():
+                gaps.append('Some panels fell in a 10 mm supplier range gap; next larger package selected.')
+
+    max_ps_cap = MAX_PS_PER_SHEET_BOX if method == 'Sheet box' else 0
+    separate_ps_boxes, acc_boxes = pack_accessories(boxes, ps_list, silicone_qty, max_ps_per_box=max_ps_cap)
+
+    total_n = len(boxes) + len(separate_ps_boxes) + len(acc_boxes)
+    tare = sum(b['tare'] for b in boxes) + sum(sb['tare'] for sb in separate_ps_boxes) + sum(ab['tare'] for ab in acc_boxes)
+    filmkg = sum(b['filmkg'] for b in boxes)
+    accessories = sum(b['ps_kg'] for b in boxes) + sum(sb['content_kg'] for sb in separate_ps_boxes) + sum(ab['content_kg'] for ab in acc_boxes)
     gross = tare + filmkg + accessories
-    
-    if package_list and accessories > 0:
-        package_list[0]['Gross weight (kg)'] += accessories / package_list[0]['Quantity']
-        
+    vol = sum(box_mm_volumetric(b['size']) for b in boxes) + sum(sb['L']*sb['W']*sb['H']/VOLUMETRIC_DIVISOR for sb in separate_ps_boxes) + sum(ab['L']*ab['W']*ab['H']/VOLUMETRIC_DIVISOR for ab in acc_boxes)
+
+    desc = []
+    package_list = []
+    size_counts = {}
+    for b in boxes:
+        sz = b['size']
+        size_counts.setdefault(sz, []).append(b)
+    for sz, blist in size_counts.items():
+        desc.append(f'{len(blist)} x {sz} mm package')
+        dims = [float(x.strip())/10.0 for x in sz.split('x')] if 'x' in sz else [0.0, 0.0, 0.0]
+        avg_gross = sum(b['tare'] + b['filmkg'] + b['ps_kg'] for b in blist) / len(blist)
+        package_list.append({'Quantity': len(blist), 'Length (cm)': dims[0], 'Width (cm)': dims[1], 'Height (cm)': dims[2], 'Gross weight (kg)': avg_gross})
+
+    for ab in acc_boxes:
+        L, W, H = ab['L'], ab['W'], ab['H']
+        g_w = ab['tare'] + ab['content_kg']
+        v_w = L * W * H / VOLUMETRIC_DIVISOR
+        desc.append(f'1 x {L:g}x{W:g}x{H:g} cm accessory box (gross {g_w:.2f} kg, vol {v_w:.2f} kg)')
+        package_list.append({'Quantity': 1, 'Length (cm)': L, 'Width (cm)': W, 'Height (cm)': H, 'Gross weight (kg)': g_w})
+
+    if separate_ps_boxes:
+        sep_groups = {}
+        for sb in separate_ps_boxes:
+            sep_groups.setdefault(sb['label'], []).append(sb)
+        for lbl, sblist in sep_groups.items():
+            sb0 = sblist[0]
+            L, W, H = sb0['L'], sb0['W'], sb0['H']
+            g_w = sb0['tare'] + sb0['content_kg']
+            v_w = L * W * H / VOLUMETRIC_DIVISOR
+            desc.append(f'{len(sblist)} x {L:g}x{W:g}x{H:g} cm ({lbl} PS, gross {g_w:.2f} kg, vol {v_w:.2f} kg)')
+            package_list.append({'Quantity': len(sblist), 'Length (cm)': L, 'Width (cm)': W, 'Height (cm)': H, 'Gross weight (kg)': g_w})
+
     chargeable = max(gross, vol) if c.get('use_volumetric_88_92', True) else gross
-    return {'packages': total_n, 'tare': tare, 'filmkg': filmkg, 'accessories': accessories, 'gross': gross, 'volumetric': vol, 'chargeable': max(gross, vol), 'description': '; '.join(desc), 'warning': ' '.join(set(gaps)), 'package_list': package_list}
+    return {'packages': total_n, 'tare': tare, 'filmkg': filmkg, 'accessories': accessories, 'gross': gross, 'volumetric': vol, 'chargeable': chargeable, 'description': '; '.join(desc), 'warning': ' '.join(set(gaps)), 'package_list': package_list}
 
 def packaging_96(df, c, ps_list, silicone_qty):
     active = df[(df.Quantity > 0) & (df['Supplier Width (m)'] > 0) & (df['Length (m)'] > 0)].copy()
-    if active.empty: return {'packages': 0, 'tare': 0., 'filmkg': 0., 'accessories': 0., 'gross': 0., 'volumetric': 0., 'chargeable': 0., 'description': '', 'warning': '', 'package_list': []}
-    
-    total_n = 0; tare = 0.; gross = 0.; vol = 0.; desc = []; warnings = []; package_list = []
+    if active.empty:
+        return {'packages': 0, 'tare': 0., 'filmkg': 0., 'accessories': 0., 'gross': 0., 'volumetric': 0., 'chargeable': 0., 'description': '', 'warning': '', 'package_list': []}
+
+    boxes = []
+    desc = []
+    warnings = []
     for _, r in active.iterrows():
         qty = int(r['Quantity']); width_cm = float(r['Supplier Width (m)']) * 100; height = float(r['Length (m)'])
         use_small = qty <= 2 and height <= 1.5 and width_cm <= 120
@@ -393,25 +506,59 @@ def packaging_96(df, c, ps_list, silicone_qty):
         else: capacity = 10
         n = math.ceil(qty / capacity)
         film_area = qty * float(r['Supplier Width (m)']) * height
-        filmkg = film_area * .78
-        row_tare = n * tare_each; row_gross = filmkg + row_tare; row_vol = n * (L * W * H / VOLUMETRIC_DIVISOR)
-        total_n += n; tare += row_tare; gross += row_gross; vol += row_vol
+        filmkg_row = film_area * .78
+        for _ in range(n):
+            boxes.append({'L': L, 'W': W, 'H': H, 'tare': tare_each, 'filmkg': filmkg_row / n, 'ps_count': 0, 'ps_kg': 0.0})
         desc.append(f'{n} x {L}x{W}x{H} cm, capacity {capacity}, for {width_cm:.0f} cm width x {height:.2f} m height')
-        package_list.append({'Quantity': n, 'Length (cm)': L, 'Width (cm)': W, 'Height (cm)': H, 'Gross weight (kg)': row_gross / max(n, 1)})
         if oversize: warnings.append(f'{width_cm:.0f} cm film exceeds the largest listed carton; {L} cm carton used provisionally.')
-    ps_w = sum(PS.get(ps.get('Type', '30W'), 1.16) * safe_qty(ps.get('Quantity', 0)) for ps in ps_list)
-    accessory = ps_w + safe_float(silicone_qty) * 0.3
-    gross += accessory
-    if package_list and accessory > 0:
-        package_list[0]['Gross weight (kg)'] += accessory / package_list[0]['Quantity']
+
+    separate_ps_boxes, acc_boxes = pack_accessories(boxes, ps_list, silicone_qty, max_ps_per_box=MAX_PS_PER_SHEET_BOX)
+    total_n = len(boxes) + len(separate_ps_boxes) + len(acc_boxes)
+    tare = sum(b['tare'] for b in boxes) + sum(sb['tare'] for sb in separate_ps_boxes) + sum(ab['tare'] for ab in acc_boxes)
+    filmkg = sum(b['filmkg'] for b in boxes)
+    accessory = sum(b['ps_kg'] for b in boxes) + sum(sb['content_kg'] for sb in separate_ps_boxes) + sum(ab['content_kg'] for ab in acc_boxes)
+    gross = tare + filmkg + accessory
+    vol = sum(b['L']*b['W']*b['H']/VOLUMETRIC_DIVISOR for b in boxes) + sum(sb['L']*sb['W']*sb['H']/VOLUMETRIC_DIVISOR for sb in separate_ps_boxes) + sum(ab['L']*ab['W']*ab['H']/VOLUMETRIC_DIVISOR for ab in acc_boxes)
+
+    package_list = []
+    dim_groups = {}
+    for b in boxes:
+        key = (b['L'], b['W'], b['H'])
+        dim_groups.setdefault(key, []).append(b)
+    for (L, W, H), blist in dim_groups.items():
+        avg_gross = sum(b['tare'] + b['filmkg'] + b['ps_kg'] for b in blist) / len(blist)
+        package_list.append({'Quantity': len(blist), 'Length (cm)': L, 'Width (cm)': W, 'Height (cm)': H, 'Gross weight (kg)': avg_gross})
+
+    for ab in acc_boxes:
+        L, W, H = ab['L'], ab['W'], ab['H']
+        g_w = ab['tare'] + ab['content_kg']
+        v_w = L * W * H / VOLUMETRIC_DIVISOR
+        desc.append(f'1 x {L:g}x{W:g}x{H:g} cm accessory box (gross {g_w:.2f} kg, vol {v_w:.2f} kg)')
+        package_list.append({'Quantity': 1, 'Length (cm)': L, 'Width (cm)': W, 'Height (cm)': H, 'Gross weight (kg)': g_w})
+
+    if separate_ps_boxes:
+        sep_groups = {}
+        for sb in separate_ps_boxes:
+            sep_groups.setdefault(sb['label'], []).append(sb)
+        for lbl, sblist in sep_groups.items():
+            sb0 = sblist[0]
+            L, W, H = sb0['L'], sb0['W'], sb0['H']
+            g_w = sb0['tare'] + sb0['content_kg']
+            v_w = L * W * H / VOLUMETRIC_DIVISOR
+            desc.append(f'{len(sblist)} x {L:g}x{W:g}x{H:g} cm ({lbl} PS, gross {g_w:.2f} kg, vol {v_w:.2f} kg)')
+            package_list.append({'Quantity': len(sblist), 'Length (cm)': L, 'Width (cm)': W, 'Height (cm)': H, 'Gross weight (kg)': g_w})
+
     chargeable = max(gross, vol)
-    return {'packages': total_n, 'tare': tare, 'filmkg': float((active.Quantity * active['Supplier Width (m)'] * active['Length (m)']).sum()) * .78, 'accessories': accessory, 'gross': gross, 'volumetric': vol, 'chargeable': chargeable, 'description': '; '.join(desc), 'warning': ' '.join(warnings), 'package_list': package_list}
+    return {'packages': total_n, 'tare': tare, 'filmkg': filmkg, 'accessories': accessory, 'gross': gross, 'volumetric': vol, 'chargeable': chargeable, 'description': '; '.join(desc), 'warning': ' '.join(warnings), 'package_list': package_list}
 
 def packaging(df, c, ps_list, silicone_qty, manual_packages, waste_manual_packages):
-    if c.get('method') == 'Manual packages': p = packaging_manual(manual_packages)
-    elif c['film'].startswith('96%'): p = packaging_96(df, c, ps_list, silicone_qty)
-    else: p = packaging_88_92(df, c, ps_list, silicone_qty)
-    
+    if c.get('method') != 'Manual packages':
+        base_chargeable = p['gross'] if (not c['film'].startswith('96%') and not c.get('use_volumetric_88_92', True)) else max(p['gross'], p['volumetric'])
+        p['chargeable'] = base_chargeable * 1.10  # +10% safety buffer on auto-calculated weight
+    else:
+        p['chargeable'] = max(p['gross'], p['volumetric'])
+    return p
+
     waste_pct = float(c.get('waste', 0.0))
     if waste_pct > 0:
         active = df[(df.Quantity > 0) & (df['Supplier Width (m)'] > 0) & (df['Length (m)'] > 0)]
@@ -425,19 +572,22 @@ def packaging(df, c, ps_list, silicone_qty, manual_packages, waste_manual_packag
                 max_w = float(active['Supplier Width (m)'].max()) if not active.empty else 1.5
                 if math.isnan(max_w) or max_w <= 0: max_w = 1.5
                 wp = calc_waste_package(waste_area, max_w, c['film'], c.get('method', 'Sheet box'))
-            
+
             p['packages'] += wp['packages']
             p['tare'] += wp['tare']
             p['filmkg'] += wp['filmkg']
             p['gross'] += wp['gross']
             p['volumetric'] += wp['volumetric']
             p['package_list'].extend(wp['package_list'])
-            
+
             sep = " | " if p['description'] else ""
             p['description'] += f"{sep}+ {wp['description']}"
             if wp.get('warning'): p['warning'] = (p['warning'] + " " + wp['warning']).strip()
-            
-    p['chargeable'] = max(p['gross'], p['volumetric'])
+
+    if c.get('method') != 'Manual packages' and not c['film'].startswith('96%') and not c.get('use_volumetric_88_92', True):
+        p['chargeable'] = p['gross']
+    else:
+        p['chargeable'] = max(p['gross'], p['volumetric'])
     return p
 
 def costs(df, c, ps_list, silicone_qty, remote_qty, manual_packages, waste_manual_packages, override_clearance=None):
